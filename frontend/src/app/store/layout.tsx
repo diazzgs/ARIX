@@ -1,5 +1,7 @@
 "use client";
 
+import Logo from "@/components/shared/Logo";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,8 +40,8 @@ export default function StoreAdminLayout({
     <div className="flex min-h-screen bg-[#F5F5F7]">
       <aside className="w-64 bg-white border-r border-gray-100 flex flex-col">
         <div className="px-6 py-6 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-[#1D1D1F]">ARIX</h1>
-          <p className="text-xs text-[#86868B] mt-0.5">Admin de Tienda</p>
+          <Logo size={40} showText={true} />
+<p className="text-xs text-[#86868B] mt-0.5">Admin de Tienda</p>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Store, Users, ShoppingBag, Ticket } from "lucide-react";
+import PageTransition from "@/components/shared/PageTransition";
 import api from "@/lib/api";
 
 interface Stats {
@@ -45,7 +46,8 @@ export default function AdminDashboardPage() {
     { label: "Tickets de soporte", value: stats.tickets, icon: Ticket, color: "bg-orange-50 text-orange-600" },
   ];
 
-  return (
+ return (
+  <PageTransition>
     <div>
       <h1 className="text-2xl font-bold text-[#1D1D1F]">Dashboard</h1>
       <p className="text-[#86868B] mt-1 mb-8">Resumen general de la plataforma ARIX</p>
@@ -66,5 +68,6 @@ export default function AdminDashboardPage() {
         </div>
       )}
     </div>
-  );
+  </PageTransition>
+);
 }

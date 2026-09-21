@@ -1,5 +1,5 @@
 "use client";
-
+import PageTransition from "@/components/shared/PageTransition";
 import { useEffect, useState } from "react";
 import { ShoppingBag, Heart, Ticket, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +43,7 @@ export default function ClientDashboardPage() {
   ];
 
   return (
+    <PageTransition>
     <div>
       <h1 className="text-2xl font-bold text-[#1D1D1F]">
         Hola, {user?.full_name?.split(" ")[0]} 👋
@@ -65,5 +66,6 @@ export default function ClientDashboardPage() {
         </div>
       )}
     </div>
+    </PageTransition>
   );
 }

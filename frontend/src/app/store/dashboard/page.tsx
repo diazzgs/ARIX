@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Package, ShoppingBag, Warehouse, Ticket } from "lucide-react";
+import PageTransition from "@/components/shared/PageTransition";
 import api from "@/lib/api";
 
 interface StoreData {
@@ -49,6 +50,7 @@ export default function StoreDashboardPage() {
   ];
 
   return (
+    <PageTransition>
     <div>
       <h1 className="text-2xl font-bold text-[#1D1D1F]">
         {store ? store.business_name : "Dashboard"}
@@ -71,5 +73,6 @@ export default function StoreDashboardPage() {
         </div>
       )}
     </div>
+    </PageTransition>
   );
 }

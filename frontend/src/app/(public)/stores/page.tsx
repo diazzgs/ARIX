@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Logo from "@/components/shared/Logo";
 
 async function getStores() {
   try {
@@ -27,8 +28,7 @@ export default async function StoresPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-8 py-8">
-        <h1 className="text-3xl font-bold text-[#1D1D1F] mb-2">Tiendas</h1>
-        <p className="text-[#86868B] mb-8">Descubre todas las tiendas disponibles en ARIX</p>
+<h1 className="text-xl font-bold text-[#1D1D1F]">Tiendas</h1>        <p className="text-[#86868B] mb-8">Descubre todas las tiendas disponibles en ARIX</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {stores.map((store: { id: number; business_name: string; slug: string; logo_url: string | null }) => (
