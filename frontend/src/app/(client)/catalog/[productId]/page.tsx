@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Star, ShoppingCart, Heart } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/auth.store";
+import { useCartStore } from "@/store/cart.store";
+import Toast from "@/components/shared/Toast";
 
 interface Product {
   id: number;
@@ -34,11 +36,12 @@ interface Review {
 export default function ProductDetailPage() {
   const { productId } = useParams();
   const { isAuthenticated, user } = useAuthStore();
+  const { addItem } = useCartStore();
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [addedFav, setAddedFav] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [toast, setToast] = useState({ visible: false, message: "" });
 
   useEffect(() => {
     Promise.all([
@@ -53,17 +56,42 @@ export default function ProductDetailPage() {
       .finally(() => setLoading(false));
   }, [productId]);
 
-  const addToFavorites = async () => {
-    if (!isAuthenticated) return;
-    await api.post("/favorites", { product_id: Number(productId) });
-    setAddedFav(true);
+  const handleAddToCart = () => {
+    if (!product) return;
+    for (let i = 0; i < quantity; i++) {
+      addItem({
+        product_id: product.id,
+        name: product.name,
+        price: Number(product.price),
+        store_id: product.store.id,
+        store_name: product.store.business_name,
+        image_url: product.images.find((img) => img.is_primary)?.image_url || null,
+      });
+    }
+    setToast({ visible: true, message: `"${product.name}" agregado al carrito` });
   };
+
+ const addToFavorites = async () => {
+  if (!isAuthenticated) return;
+  try {
+    await api.post("/favorites", { product_id: Number(productId) });
+    setToast({ visible: true, message: "Agregado a favoritos ❤️" });
+  } catch {
+    setToast({ visible: true, message: "Ya está en tus favoritos" });
+  }
+};
 
   if (loading) return <p className="p-8 text-[#86868B]">Cargando producto...</p>;
   if (!product) return <p className="p-8 text-red-500">Producto no encontrado</p>;
 
   return (
     <div className="min-h-screen bg-[#F5F5F7]">
+      <Toast
+        message={toast.message}
+        visible={toast.visible}
+        onClose={() => setToast({ ...toast, visible: false })}
+      />
+
       <div className="bg-white border-b border-gray-100 px-8 py-4">
         <div className="max-w-6xl mx-auto flex items-center gap-2 text-sm text-[#86868B]">
           <Link href="/catalog" className="hover:text-[#1D1D1F]">Catálogo</Link>
@@ -74,7 +102,6 @@ export default function ProductDetailPage() {
 
       <div className="max-w-6xl mx-auto px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Imagen */}
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm h-80 flex items-center justify-center">
             {product.images.length > 0 ? (
               <img
@@ -87,7 +114,6 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* Info */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <Link
               href={"/stores/" + product.store.slug}
@@ -122,9 +148,11 @@ export default function ProductDetailPage() {
               <p className="text-sm text-[#86868B] mb-6 leading-relaxed">{product.description}</p>
             )}
 
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-4">
               <span className={"text-sm font-medium " + (product.inventory?.is_out_of_stock ? "text-red-500" : "text-green-600")}>
-                {product.inventory?.is_out_of_stock ? "Agotado" : "En stock (" + product.inventory?.stock_quantity + " uds)"}
+                {product.inventory?.is_out_of_stock
+                  ? "Agotado"
+                  : "En stock (" + product.inventory?.stock_quantity + " uds)"}
               </span>
             </div>
 
@@ -134,36 +162,31 @@ export default function ProductDetailPage() {
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     className="px-3 py-2 text-[#86868B] hover:bg-gray-50"
-                  >
-                    −
-                  </button>
+                  >−</button>
                   <span className="px-4 py-2 text-sm font-medium">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
                     className="px-3 py-2 text-[#86868B] hover:bg-gray-50"
-                  >
-                    +
-                  </button>
+                  >+</button>
                 </div>
               </div>
             )}
 
             <div className="flex gap-3">
-              {isAuthenticated && user?.role.name === "ROLE_CLIENT" && (
+              {isAuthenticated && user?.role.name === "ROLE_CLIENT" && !product.inventory?.is_out_of_stock && (
                 <>
-                  <Link
-                    href="/checkout"
-                    className="flex-1 bg-[#1D1D1F] text-white py-3 rounded-xl text-sm font-medium text-center hover:bg-black transition-colors flex items-center justify-center gap-2"
+                  <button
+                    onClick={handleAddToCart}
+                    className="flex-1 bg-[#1D1D1F] text-white py-3 rounded-xl text-sm font-medium hover:bg-black transition-colors flex items-center justify-center gap-2"
                   >
                     <ShoppingCart size={16} />
-                    Comprar ahora
-                  </Link>
+                    Agregar al carrito
+                  </button>
                   <button
                     onClick={addToFavorites}
-                    disabled={addedFav}
-                    className={"p-3 rounded-xl border transition-colors " + (addedFav ? "border-red-200 bg-red-50 text-red-500" : "border-gray-200 text-[#86868B] hover:border-gray-300")}
+                    className="p-3 rounded-xl border border-gray-200 text-[#86868B] hover:border-gray-300 transition-colors"
                   >
-                    <Heart size={18} className={addedFav ? "fill-red-500" : ""} />
+                    <Heart size={18} />
                   </button>
                 </>
               )}
@@ -179,7 +202,6 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {/* Reseñas */}
         {reviews.length > 0 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="font-bold text-[#1D1D1F] mb-4">Reseñas ({reviews.length})</h2>
@@ -198,9 +220,7 @@ export default function ProductDetailPage() {
                       ))}
                     </div>
                   </div>
-                  {review.comment && (
-                    <p className="text-sm text-[#86868B]">{review.comment}</p>
-                  )}
+                  {review.comment && <p className="text-sm text-[#86868B]">{review.comment}</p>}
                 </div>
               ))}
             </div>

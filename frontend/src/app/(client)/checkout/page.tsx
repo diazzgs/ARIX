@@ -1,33 +1,40 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useCartStore } from "@/store/cart.store";
+import { useState } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
-
-interface CartItem {
-  product_id: number;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-}
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [items] = useState<CartItem[]>([
-    { product_id: 2, product_name: "Audífonos Inalámbricos Premium", quantity: 1, unit_price: 2499 },
-    { product_id: 5, product_name: "Set de Cojines Decorativos (4 piezas)", quantity: 1, unit_price: 749 },
-  ]);
+  const { items, total, clearCart } = useCartStore();
   const [address, setAddress] = useState(user?.address || "");
   const [paymentMethod, setPaymentMethod] = useState("CREDIT_CARD");
   const [cardDigits, setCardDigits] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const subtotal = items.reduce((acc, item) => acc + item.unit_price * item.quantity, 0);
-  const tax = subtotal * 0.15;
-  const total = subtotal + tax;
+  const tax = total() * 0.15;
+  const grandTotal = total() + tax;
+
+  if (items.length === 0) {
+    return (
+      <div className="max-w-2xl text-center py-16">
+        <p className="text-4xl mb-4">🛒</p>
+        <h1 className="text-xl font-bold text-[#1D1D1F] mb-2">Tu carrito está vacío</h1>
+        <p className="text-[#86868B] mb-6">Agrega productos desde el catálogo</p>
+        <Link
+          href="/catalog"
+          className="inline-block bg-[#1D1D1F] text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-black transition-colors"
+        >
+          Ir al catálogo
+        </Link>
+      </div>
+    );
+  }
 
   const handleCheckout = async () => {
     if (!address) { setError("Ingresa tu dirección de envío"); return; }
@@ -40,8 +47,8 @@ export default function CheckoutPage() {
         payment_method: paymentMethod,
         card_last_digits: cardDigits || null,
       });
-      const orderId = res.data.data.id;
-      router.push("/orders/" + orderId);
+      clearCart();
+      router.push("/orders/" + res.data.data.id);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       setError(e?.response?.data?.message || "Error al procesar la compra");
@@ -54,18 +61,17 @@ export default function CheckoutPage() {
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold text-[#1D1D1F] mb-8">Checkout</h1>
 
-      {/* Resumen del carrito */}
       <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
         <h2 className="font-medium text-[#1D1D1F] mb-4">Resumen del pedido</h2>
         <div className="space-y-3">
           {items.map((item) => (
             <div key={item.product_id} className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#1D1D1F]">{item.product_name}</p>
-                <p className="text-xs text-[#86868B]">x{item.quantity}</p>
+                <p className="text-sm text-[#1D1D1F]">{item.name}</p>
+                <p className="text-xs text-[#86868B]">{item.store_name} · x{item.quantity}</p>
               </div>
               <p className="text-sm font-medium text-[#1D1D1F]">
-                {"L. " + (item.unit_price * item.quantity).toLocaleString("es-HN")}
+                {"L. " + (item.price * item.quantity).toLocaleString("es-HN")}
               </p>
             </div>
           ))}
@@ -73,20 +79,19 @@ export default function CheckoutPage() {
         <div className="border-t border-gray-100 mt-4 pt-4 space-y-2">
           <div className="flex justify-between text-sm text-[#86868B]">
             <span>Subtotal</span>
-            <span>{"L. " + subtotal.toLocaleString("es-HN")}</span>
+            <span>{"L. " + total().toLocaleString("es-HN")}</span>
           </div>
           <div className="flex justify-between text-sm text-[#86868B]">
             <span>Impuestos (15%)</span>
             <span>{"L. " + tax.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm font-bold text-[#1D1D1F]">
-            <span>Total estimado</span>
-            <span>{"L. " + total.toFixed(2)}</span>
+            <span>Total</span>
+            <span>{"L. " + grandTotal.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
-      {/* Dirección */}
       <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
         <h2 className="font-medium text-[#1D1D1F] mb-4">Dirección de envío</h2>
         <input
@@ -98,7 +103,6 @@ export default function CheckoutPage() {
         />
       </div>
 
-      {/* Pago */}
       <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
         <h2 className="font-medium text-[#1D1D1F] mb-4">Método de pago</h2>
         <div className="space-y-3">
@@ -134,7 +138,7 @@ export default function CheckoutPage() {
         disabled={loading}
         className="w-full bg-[#1D1D1F] text-white py-4 rounded-2xl font-medium hover:bg-black transition-colors disabled:opacity-50"
       >
-        {loading ? "Procesando..." : "Confirmar compra — L. " + total.toFixed(2)}
+        {loading ? "Procesando..." : "Confirmar compra — L. " + grandTotal.toFixed(2)}
       </button>
     </div>
   );
