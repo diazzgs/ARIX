@@ -1,0 +1,33 @@
+# =====================================================================
+# ARIX BACKEND - Dependencias (FastAPI + SQLAlchemy + Alembic)
+# =====================================================================
+
+# --- Framework principal ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# --- Base de datos ---
+sqlalchemy==2.0.35
+alembic==1.13.2
+pymysql==1.1.1
+cryptography==43.0.1
+
+# --- Validación / configuración ---
+pydantic==2.9.2
+pydantic-settings==2.5.2
+email-validator==2.2.0
+
+# --- Seguridad / JWT ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.0
+python-multipart==0.0.9
+
+# --- WebSockets ---
+websockets==13.1
+
+# --- PDF ---
+reportlab==4.2.2
+
+# --- Utilidades ---
+python-dotenv==1.0.1

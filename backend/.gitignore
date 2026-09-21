@@ -1,0 +1,38 @@
+# =====================================================================
+# ARIX BACKEND - .gitignore
+# =====================================================================
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+ENV/
+
+# Variables de entorno
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Uploads (archivos subidos por usuarios)
+uploads/*
+!uploads/.gitkeep
+!uploads/avatars/.gitkeep
+!uploads/products/.gitkeep
+!uploads/stores/.gitkeep
+!uploads/invoices/.gitkeep
+
+# Editor
+.vscode/
+.idea/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
