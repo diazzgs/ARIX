@@ -92,6 +92,13 @@ class StoreService:
         updated = self.repository.update(store)
         return StoreResponse.model_validate(updated)
 
+    def update_store_logo_by_admin(self, store_id: int, logo_url: str) -> StoreResponse:
+        """Sube/reemplaza el logo de cualquier tienda. Solo para el Super Admin."""
+        store = self._get_store_or_404(store_id)
+        store.logo_url = logo_url
+        updated = self.repository.update(store)
+        return StoreResponse.model_validate(updated)
+
     def update_store_status(self, store_id: int, data: UpdateStoreStatusRequest) -> StoreResponse:
         store = self._get_store_or_404(store_id)
         store.status = data.status.value

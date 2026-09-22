@@ -75,6 +75,9 @@ from app.modules.chat.router import router as chat_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.audit.router import router as audit_router
 
+from app.modules.dashboard.router import router as dashboard_router
+
+
 app.include_router(users_router, prefix=settings.API_PREFIX)
 app.include_router(stores_router, prefix=settings.API_PREFIX)
 app.include_router(products_router, prefix=settings.API_PREFIX)
@@ -89,6 +92,7 @@ app.include_router(chat_router, prefix=settings.API_PREFIX)
 app.include_router(notifications_router, prefix=settings.API_PREFIX)
 app.include_router(audit_router, prefix=settings.API_PREFIX)
 
+app.include_router(dashboard_router, prefix=settings.API_PREFIX)
 
 @app.get("/api/health", tags=["Health"])
 def health_check():

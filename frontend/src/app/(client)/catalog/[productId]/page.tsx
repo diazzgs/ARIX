@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Star, ShoppingCart, Heart, MessageCircle, Package } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
 import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 import Toast from "@/components/shared/Toast";
@@ -222,7 +222,7 @@ export default function ProductDetailPage() {
         >
           {primaryImage ? (
             <img
-              src={primaryImage.image_url}
+              src={getFileUrl(primaryImage.image_url)}
               alt={product.name}
               className="w-full h-full object-cover"
               style={{ minHeight: "400px" }}

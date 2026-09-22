@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, ChevronDown, ChevronUp, Package, FileText, Download } from "lucide-react";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
 import PageTransition from "@/components/shared/PageTransition";
 import Toast from "@/components/shared/Toast";
 
@@ -246,7 +246,7 @@ export default function StoreOrdersPage() {
                                   <div className="w-12 h-12 rounded-xl bg-[#F5F5F7] overflow-hidden shrink-0 flex items-center justify-center">
                                     {item.product_image_url ? (
                                       <img
-                                        src={item.product_image_url}
+                                        src={getFileUrl(item.product_image_url)}
                                         alt={item.product_name}
                                         className="w-full h-full object-cover"
                                       />

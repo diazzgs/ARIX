@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ImagePlus, X } from "lucide-react";
 import api from "@/lib/api";
 
 interface Category {
@@ -23,8 +24,24 @@ export default function NewProductPage() {
     initial_stock: "0",
     min_stock: "5",
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
 
   useEffect(() => {
     api.get("/categories?flat=true")
@@ -46,13 +63,29 @@ export default function NewProductPage() {
     setError("");
     setLoading(true);
     try {
-      await api.post("/store/products", {
+      const res = await api.post("/store/products", {
         ...form,
         category_id: Number(form.category_id),
         price: Number(form.price),
         initial_stock: Number(form.initial_stock),
         min_stock: Number(form.min_stock),
       });
+      const createdProductId = res.data.data.id;
+
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("file", imageFile);
+        try {
+          await api.post(
+            "/store/products/" + createdProductId + "/images/upload?is_primary=true",
+            formData,
+            { headers: { "Content-Type": "multipart/form-data" } }
+          );
+        } catch (imgErr) {
+          console.error("Error al subir la imagen del producto", imgErr);
+        }
+      }
+
       router.push("/store/products");
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -74,6 +107,41 @@ export default function NewProductPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
           <h2 className="font-medium text-[#1D1D1F]">Información básica</h2>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1D1D1F] mb-1">
+              Foto del producto <span className="text-[#86868B]">(opcional)</span>
+            </label>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            {imagePreview ? (
+              <div className="flex items-center gap-3">
+                <img src={imagePreview} alt="Vista previa" className="w-16 h-16 rounded-xl object-cover border border-gray-200" />
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 px-3 py-2 rounded-xl hover:bg-red-50 transition-colors"
+                >
+                  <X size={13} />
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-gray-300 text-sm text-[#86868B] hover:border-gray-400 hover:text-[#1D1D1F] transition-colors w-full justify-center"
+              >
+                <ImagePlus size={16} />
+                Subir foto
+              </button>
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-[#1D1D1F] mb-1">Categoría</label>

@@ -5,7 +5,7 @@ import { LoginRequest, RegisterRequest } from "@/types/auth";
 
 export const useAuth = () => {
   const router = useRouter();
-  const { user, isAuthenticated, setAuth, logout: clearAuth } = useAuthStore();
+  const { user, isAuthenticated, setAuth, logout: clearAuth, updateUser } = useAuthStore();
 
   const login = async (data: LoginRequest) => {
     const result = await AuthService.login(data);
@@ -41,5 +41,5 @@ export const useAuth = () => {
     }
   };
 
-  return { user, isAuthenticated, login, register, logout };
+  return { user, isAuthenticated, login, register, logout, updateUser };
 };

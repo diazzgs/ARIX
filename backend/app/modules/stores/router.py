@@ -207,6 +207,33 @@ def list_stores(
     return ApiResponse.ok(PageResponse.create(items, total, PageParams(page=page, size=size)))
 
 
+@router.post(
+    "/admin/stores/{store_id}/logo",
+    response_model=ApiResponse[StoreResponse],
+    summary="Subir logo de una tienda (Super Admin)",
+)
+def upload_store_logo_by_admin(
+    store_id: int,
+    file: UploadFile = File(..., description="Imagen JPG, PNG, WEBP o GIF (máx. 10MB)"),
+    current_user: User = Depends(RequireRole(RoleName.SUPER_ADMIN)),
+    service: StoreService = Depends(get_store_service),
+    db: Session = Depends(get_db),
+):
+    """Sube o reemplaza el logo de cualquier tienda de la plataforma."""
+    image_url = save_image(file, SUBFOLDER_STORES)
+    result = service.update_store_logo_by_admin(store_id, image_url)
+
+    record_audit_log(
+        db,
+        user_id=current_user.id,
+        action="STORE_LOGO_CHANGED",
+        entity_type="STORE",
+        entity_id=store_id,
+    )
+
+    return ApiResponse.ok(result, message="Logo actualizado correctamente")
+
+
 @router.get(
     "/admin/stores/{store_id}",
     response_model=ApiResponse[StoreResponse],

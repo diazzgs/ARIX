@@ -13,6 +13,7 @@ from pathlib import Path
 
 from app.common.exceptions.custom_exceptions import ForbiddenException, ResourceNotFoundException
 from app.common.enums.statuses import InvoiceType
+from app.common.schemas.pagination import PageParams, PageResponse
 from app.core.config import settings
 from app.core.pdf_generator import (
     InvoiceLineItem,
@@ -22,7 +23,7 @@ from app.core.pdf_generator import (
 )
 from app.modules.invoices.models import Invoice
 from app.modules.invoices.repository import InvoiceRepository
-from app.modules.invoices.schemas import InvoiceResponse
+from app.modules.invoices.schemas import AdminInvoiceResponse, InvoiceResponse
 from app.modules.orders.repository import OrderRepository
 from app.modules.stores.repository import StoreRepository
 from app.utils.file_storage import SUBFOLDER_INVOICES
@@ -71,6 +72,51 @@ class InvoiceService:
 
         if invoice.customer_id != customer_id:
             raise ForbiddenException("No tienes acceso a esta factura")
+
+        if not invoice.pdf_url:
+            raise ResourceNotFoundException("El archivo PDF de esta factura no está disponible")
+
+        relative = invoice.pdf_url.removeprefix("/api/files/")
+        path = Path(settings.UPLOAD_DIR) / relative
+        if not path.exists():
+            raise ResourceNotFoundException("El archivo PDF de esta factura no se encuentra en el servidor")
+
+        return path
+
+    # -----------------------------------------------------------------
+    # Listado y descarga global (Super Admin)
+    # -----------------------------------------------------------------
+
+    def list_all_invoices(self, page: int, size: int) -> PageResponse[AdminInvoiceResponse]:
+        """Lista todas las facturas de la plataforma, más recientes primero."""
+        offset = max(page - 1, 0) * size
+        invoices, total = self.repository.list_all(offset=offset, limit=size)
+
+        items = [
+            AdminInvoiceResponse(
+                id=inv.id,
+                invoice_number=inv.invoice_number,
+                order_id=inv.order_id,
+                order_number=inv.order.order_number,
+                store_order_id=inv.store_order_id,
+                store_name=inv.store_order.store.business_name if inv.store_order else None,
+                customer_name=inv.customer.full_name,
+                type=inv.type,
+                subtotal=inv.subtotal,
+                tax_amount=inv.tax_amount,
+                total=inv.total,
+                pdf_url=inv.pdf_url,
+                issued_at=inv.issued_at,
+            )
+            for inv in invoices
+        ]
+        return PageResponse.create(items, total, PageParams(page=page, size=size))
+
+    def get_invoice_pdf_path_as_admin(self, invoice_id: int) -> Path:
+        """Retorna la ruta del PDF de cualquier factura de la plataforma. Solo para el Super Admin."""
+        invoice = self.repository.get_by_id(invoice_id)
+        if invoice is None:
+            raise ResourceNotFoundException("Factura no encontrada")
 
         if not invoice.pdf_url:
             raise ResourceNotFoundException("El archivo PDF de esta factura no está disponible")

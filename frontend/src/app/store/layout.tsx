@@ -8,11 +8,14 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Package, ShoppingBag, Warehouse,
   Store, Ticket, MessageCircle, Bell, LogOut,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, UserCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
 import NotificationDropdown from "@/components/shared/NotificationDropdown";
+
+const isCustomAvatar = (url: string | null | undefined): url is string =>
+  !!url && url.startsWith("/api/files/");
 
 const navItems = [
   { href: "/store/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -23,6 +26,7 @@ const navItems = [
   { href: "/store/tickets", label: "Tickets", icon: Ticket },
   { href: "/store/chat", label: "Chat", icon: MessageCircle },
   { href: "/store/notifications", label: "Notificaciones", icon: Bell },
+  { href: "/store/account", label: "Mi Perfil", icon: UserCircle },
 ];
 
 export default function StoreAdminLayout({ children }: { children: React.ReactNode }) {
@@ -134,10 +138,14 @@ export default function StoreAdminLayout({ children }: { children: React.ReactNo
                 transition={{ duration: 0.15 }}
                 className="bg-[#F5F5F7] rounded-2xl p-3 flex items-center gap-2.5"
               >
-                <div className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center shrink-0">
-                  <span className="text-white text-sm font-bold">
-                    {user?.full_name?.charAt(0).toUpperCase()}
-                  </span>
+                <div className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center shrink-0 overflow-hidden">
+                  {isCustomAvatar(user?.profile_image_url) ? (
+                    <img src={getFileUrl(user.profile_image_url)} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-white text-sm font-bold">
+                      {user?.full_name?.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[#1D1D1F] truncate">{user?.full_name}</p>
@@ -161,12 +169,16 @@ export default function StoreAdminLayout({ children }: { children: React.ReactNo
                 className="flex flex-col items-center gap-2"
               >
                 <div
-                  className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center"
+                  className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center overflow-hidden"
                   title={user?.full_name}
                 >
-                  <span className="text-white text-sm font-bold">
-                    {user?.full_name?.charAt(0).toUpperCase()}
-                  </span>
+                  {isCustomAvatar(user?.profile_image_url) ? (
+                    <img src={getFileUrl(user.profile_image_url)} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-white text-sm font-bold">
+                      {user?.full_name?.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={logout}
@@ -189,16 +201,27 @@ export default function StoreAdminLayout({ children }: { children: React.ReactNo
             Hola, <span className="font-medium text-[#1D1D1F]">{user?.full_name?.split(" ")[0]}</span>
           </p>
           <div className="flex items-center gap-2">
-            <NotificationDropdown unreadCount={unreadCount} onCountChange={setUnreadCount} />
+                       <NotificationDropdown unreadCount={unreadCount} onCountChange={setUnreadCount} />
             <div className="w-px h-5 bg-gray-200 mx-1" />
+            <Link
+              href="/store/account"
+              title="Mi perfil"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors group"
+            >
+              <div className="w-7 h-7 bg-[#1D1D1F] rounded-lg flex items-center justify-center overflow-hidden">
+                {isCustomAvatar(user?.profile_image_url) ? (
+                  <img src={getFileUrl(user.profile_image_url)} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white text-xs font-bold">{user?.full_name?.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+            </Link>
             <button
               onClick={logout}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-red-50 transition-colors group"
+              title="Cerrar sesión"
+              className="p-2.5 rounded-xl hover:bg-red-50 transition-colors text-[#86868B] hover:text-red-500"
             >
-              <div className="w-7 h-7 bg-[#1D1D1F] rounded-lg flex items-center justify-center">
-                <span className="text-white text-xs font-bold">{user?.full_name?.charAt(0).toUpperCase()}</span>
-              </div>
-              <LogOut size={14} className="text-[#86868B] group-hover:text-red-500 transition-colors" />
+              <LogOut size={16} />
             </button>
           </div>
         </header>

@@ -4,10 +4,11 @@ ARIX BACKEND - Módulo Invoices: Repository
 =====================================================================
 """
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, joinedload
 
 from app.modules.invoices.models import Invoice
+from app.modules.orders.models import StoreOrder
 
 
 class InvoiceRepository:
@@ -15,6 +16,26 @@ class InvoiceRepository:
 
     def __init__(self, db: Session):
         self.db = db
+
+    def list_all(self, offset: int = 0, limit: int = 20) -> tuple[list[Invoice], int]:
+        """Lista todas las facturas de la plataforma (Super Admin), más recientes primero."""
+        stmt = (
+            select(Invoice)
+            .options(
+                joinedload(Invoice.order),
+                joinedload(Invoice.customer),
+                joinedload(Invoice.store_order).joinedload(StoreOrder.store),
+            )
+            .order_by(Invoice.issued_at.desc())
+        )
+        count_stmt = select(func.count(Invoice.id))
+
+        total = self.db.execute(count_stmt).scalar_one()
+
+        stmt = stmt.offset(offset).limit(limit)
+        items = list(self.db.execute(stmt).unique().scalars().all())
+
+        return items, total
 
     def get_by_id(self, invoice_id: int) -> Invoice | None:
         stmt = select(Invoice).where(Invoice.id == invoice_id)

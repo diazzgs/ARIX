@@ -8,16 +8,17 @@ Expone los endpoints de:
 =====================================================================
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.common.enums.roles import RoleName
+from app.common.schemas.pagination import PageResponse
 from app.common.schemas.response import ApiResponse
 from app.core.dependencies import RequireRole
 from app.db.session import get_db
 from app.modules.invoices.repository import InvoiceRepository
-from app.modules.invoices.schemas import InvoiceResponse
+from app.modules.invoices.schemas import AdminInvoiceResponse, InvoiceResponse
 from app.modules.invoices.service import InvoiceService
 from app.modules.orders.repository import OrderRepository
 from app.modules.stores.repository import StoreRepository
@@ -64,6 +65,44 @@ def download_invoice_pdf(
 ):
     """Descarga el archivo PDF de una factura propia."""
     pdf_path = service.get_invoice_pdf_path(current_user.id, invoice_id)
+    return FileResponse(
+        path=pdf_path,
+        media_type="application/pdf",
+        filename=pdf_path.name,
+    )
+
+
+# =====================================================================
+# SUPER ADMIN — /api/admin/invoices
+# =====================================================================
+
+@router.get(
+    "/admin/invoices",
+    response_model=ApiResponse[PageResponse[AdminInvoiceResponse]],
+    summary="Listar todas las facturas de la plataforma (Super Admin)",
+)
+def list_all_invoices(
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=100),
+    _: User = Depends(RequireRole(RoleName.SUPER_ADMIN)),
+    service: InvoiceService = Depends(get_invoice_service),
+):
+    """Lista todas las facturas generadas en la plataforma, más recientes primero."""
+    result = service.list_all_invoices(page, size)
+    return ApiResponse.ok(result)
+
+
+@router.get(
+    "/admin/invoices/{invoice_id}/download",
+    summary="Descargar PDF de cualquier factura (Super Admin)",
+)
+def download_invoice_pdf_as_admin(
+    invoice_id: int,
+    _: User = Depends(RequireRole(RoleName.SUPER_ADMIN)),
+    service: InvoiceService = Depends(get_invoice_service),
+):
+    """Descarga el archivo PDF de cualquier factura de la plataforma."""
+    pdf_path = service.get_invoice_pdf_path_as_admin(invoice_id)
     return FileResponse(
         path=pdf_path,
         media_type="application/pdf",

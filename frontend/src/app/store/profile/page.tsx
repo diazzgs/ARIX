@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Store, Mail, Phone, MapPin, Zap, Globe, FileText, Building2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Store, Mail, Phone, MapPin, Zap, Globe, FileText, Building2, Camera, Loader2 } from "lucide-react";
 import { FaFacebook, FaInstagram } from "react-icons/fa";
 import { motion } from "framer-motion";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
 import Toast from "@/components/shared/Toast";
 import PageTransition from "@/components/shared/PageTransition";
+
+const isCustomImage = (url: string | null | undefined): url is string =>
+  !!url && url.startsWith("/api/files/");
 
 interface StoreData {
   id: number;
@@ -17,6 +20,7 @@ interface StoreData {
   contact_phone: string | null;
   contact_address: string | null;
   status: string;
+  logo_url: string | null;
   profile: {
     tagline: string | null;
     about: string | null;
@@ -46,6 +50,8 @@ export default function StoreProfilePage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState({ visible: false, message: "" });
 
   useEffect(() => {
@@ -72,6 +78,26 @@ export default function StoreProfilePage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post("/store/me/logo", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setStore(res.data.data);
+      setToast({ visible: true, message: "✓ Logo actualizado correctamente" });
+    } catch {
+      setToast({ visible: true, message: "Error al subir el logo" });
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,9 +150,33 @@ export default function StoreProfilePage() {
           <div className="relative flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-                  <Store size={22} className="text-white" />
-                </div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleLogoChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={uploadingLogo}
+                  title="Cambiar logo de la tienda"
+                  className="relative w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center overflow-hidden group shrink-0 disabled:opacity-70"
+                >
+                  {isCustomImage(store?.logo_url) ? (
+                    <img src={getFileUrl(store.logo_url)} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <Store size={22} className="text-white" />
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    {uploadingLogo ? (
+                      <Loader2 size={16} className="text-white animate-spin" />
+                    ) : (
+                      <Camera size={16} className="text-white" />
+                    )}
+                  </div>
+                </button>
                 <div>
                   <h1 className="text-2xl font-bold">{store?.business_name}</h1>
                   <p className="text-white/60 text-sm">/{store?.slug}</p>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
 import PageTransition from "@/components/shared/PageTransition";
 
 interface Product {
@@ -46,7 +46,9 @@ export default function CatalogPage() {
     api.get("/categories?flat=true")
       .then((res) => setCategories(res.data.data))
       .catch(console.error);
-    fetchProducts();
+    const timer = setTimeout(() => fetchProducts(), 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -168,7 +170,7 @@ export default function CatalogPage() {
                 <p className="text-xs text-[#86868B]">Filtros activos:</p>
                 {search && (
                   <span className="flex items-center gap-1 px-2.5 py-1 bg-[#1D1D1F] text-white rounded-full text-xs">
-                    "{search}"
+                    &quot;{search}&quot;
                     <button onClick={() => { setSearch(""); fetchProducts("", categoryId); }}>
                       <X size={10} />
                     </button>
@@ -237,7 +239,7 @@ export default function CatalogPage() {
                   <div className="relative h-44 bg-[#F5F5F7] overflow-hidden">
                     {product.primary_image_url ? (
                       <img
-                        src={product.primary_image_url}
+                        src={getFileUrl(product.primary_image_url)}
                         alt={product.name}
                         className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />

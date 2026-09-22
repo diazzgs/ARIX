@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.common.enums.roles import RoleName
-from app.common.enums.statuses import NotificationType
+from app.common.enums.statuses import NotificationType, UserStatus
 from app.common.schemas.response import ApiResponse
 from app.common.schemas.pagination import PageResponse, PageParams
 from app.core.dependencies import RequireRole, get_current_user
@@ -194,13 +194,17 @@ def create_store_admin(
 )
 def list_users(
     role: RoleName | None = Query(default=None, description="Filtrar por rol"),
+    status_filter: UserStatus | None = Query(default=None, alias="status", description="Filtrar por estado"),
+    search: str | None = Query(default=None, description="Buscar por nombre o correo"),
+    sort_by: str = Query(default="created_at", pattern="^(full_name|email|created_at)$"),
+    sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=10, ge=1, le=100),
     _: User = Depends(RequireRole(RoleName.SUPER_ADMIN)),
     service: UserService = Depends(get_user_service),
 ):
-    """Lista todos los usuarios de la plataforma, opcionalmente filtrados por rol."""
-    items, total = service.list_users(role, page, size)
+    """Lista todos los usuarios de la plataforma, con filtros por rol, estado, búsqueda y ordenamiento."""
+    items, total = service.list_users(role, status_filter, search, sort_by, sort_dir, page, size)
     page_response = PageResponse.create(items, total, PageParams(page=page, size=size))
     return ApiResponse.ok(page_response)
 

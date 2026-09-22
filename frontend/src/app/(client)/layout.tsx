@@ -12,7 +12,11 @@ import {
   ShoppingCart, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
+import NotificationDropdown from "@/components/shared/NotificationDropdown";
+
+const isCustomAvatar = (url: string | null | undefined): url is string =>
+  !!url && url.startsWith("/api/files/");
 
 const navItems = [
   { href: "/catalog", label: "Catálogo", icon: Store },
@@ -133,10 +137,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 transition={{ duration: 0.15 }}
                 className="bg-[#F5F5F7] rounded-2xl p-3 flex items-center gap-2.5"
               >
-                <div className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center shrink-0">
-                  <span className="text-white text-sm font-bold">
-                    {user?.full_name?.charAt(0).toUpperCase()}
-                  </span>
+                <div className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center shrink-0 overflow-hidden">
+                  {isCustomAvatar(user?.profile_image_url) ? (
+                    <img src={getFileUrl(user.profile_image_url)} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-white text-sm font-bold">
+                      {user?.full_name?.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[#1D1D1F] truncate">{user?.full_name}</p>
@@ -160,12 +168,16 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 className="flex flex-col items-center gap-2"
               >
                 <div
-                  className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center"
+                  className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center overflow-hidden"
                   title={user?.full_name}
                 >
-                  <span className="text-white text-sm font-bold">
-                    {user?.full_name?.charAt(0).toUpperCase()}
-                  </span>
+                  {isCustomAvatar(user?.profile_image_url) ? (
+                    <img src={getFileUrl(user.profile_image_url)} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-white text-sm font-bold">
+                      {user?.full_name?.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={logout}
@@ -189,25 +201,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </p>
           <div className="flex items-center gap-2">
             {/* Notificaciones */}
-            <Link
-              href="/notifications"
-              className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors text-[#86868B] hover:text-[#1D1D1F]"
-              title="Notificaciones"
-            >
-              <Bell size={18} />
-              <AnimatePresence>
-                {unreadCount > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"
-                  >
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Link>
+            <NotificationDropdown unreadCount={unreadCount} onCountChange={setUnreadCount} href="/notifications" />
 
             {/* Carrito */}
             <Link
@@ -233,18 +227,28 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             {/* Divider */}
             <div className="w-px h-5 bg-gray-200 mx-1" />
 
-            {/* Avatar + cerrar sesión */}
+            {/* Avatar → perfil */}
+            <Link
+              href="/profile"
+              title="Mi perfil"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors"
+            >
+              <div className="w-7 h-7 bg-[#1D1D1F] rounded-lg flex items-center justify-center overflow-hidden">
+                {isCustomAvatar(user?.profile_image_url) ? (
+                  <img src={getFileUrl(user.profile_image_url)} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white text-xs font-bold">
+                    {user?.full_name?.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+            </Link>
             <button
               onClick={logout}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-red-50 transition-colors group"
               title="Cerrar sesión"
+              className="p-2.5 rounded-xl hover:bg-red-50 transition-colors text-[#86868B] hover:text-red-500"
             >
-              <div className="w-7 h-7 bg-[#1D1D1F] rounded-lg flex items-center justify-center">
-                <span className="text-white text-xs font-bold">
-                  {user?.full_name?.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <LogOut size={14} className="text-[#86868B] group-hover:text-red-500 transition-colors" />
+              <LogOut size={16} />
             </button>
           </div>
         </header>

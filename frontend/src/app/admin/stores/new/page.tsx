@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ImagePlus, X } from "lucide-react";
 import api from "@/lib/api";
 
 interface AdminUser {
@@ -23,8 +24,24 @@ export default function NewStorePage() {
     contact_address: "",
     admin_user_id: "",
   });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const clearLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  };
 
   useEffect(() => {
     api.get("/admin/users?role=ROLE_STORE_ADMIN&size=50")
@@ -46,10 +63,24 @@ export default function NewStorePage() {
     setError("");
     setLoading(true);
     try {
-      await api.post("/admin/stores", {
+      const res = await api.post("/admin/stores", {
         ...form,
         admin_user_id: form.admin_user_id ? Number(form.admin_user_id) : null,
       });
+      const createdStoreId = res.data.data.id;
+
+      if (logoFile) {
+        const formData = new FormData();
+        formData.append("file", logoFile);
+        try {
+          await api.post("/admin/stores/" + createdStoreId + "/logo", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        } catch (logoErr) {
+          console.error("Error al subir el logo de la tienda", logoErr);
+        }
+      }
+
       router.push("/admin/stores");
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -71,6 +102,41 @@ export default function NewStorePage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
           <h2 className="font-medium text-[#1D1D1F]">Información de la tienda</h2>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1D1D1F] mb-1">
+              Logo de la tienda <span className="text-[#86868B]">(opcional)</span>
+            </label>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleLogoSelect}
+              className="hidden"
+            />
+            {logoPreview ? (
+              <div className="flex items-center gap-3">
+                <img src={logoPreview} alt="Vista previa del logo" className="w-16 h-16 rounded-xl object-cover border border-gray-200" />
+                <button
+                  type="button"
+                  onClick={clearLogo}
+                  className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 px-3 py-2 rounded-xl hover:bg-red-50 transition-colors"
+                >
+                  <X size={13} />
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-gray-300 text-sm text-[#86868B] hover:border-gray-400 hover:text-[#1D1D1F] transition-colors w-full justify-center"
+              >
+                <ImagePlus size={16} />
+                Subir logo
+              </button>
+            )}
+          </div>
 
           {[
             { label: "Nombre comercial", name: "business_name", required: true },

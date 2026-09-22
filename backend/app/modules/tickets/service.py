@@ -108,8 +108,11 @@ class TicketService:
         message = TicketMessage(ticket_id=ticket.id, sender_id=user_id, message=data.message)
         self.repository.add_message(message)
 
-        # Si un admin responde un ticket abierto, pasa automáticamente a "en proceso"
-        if role in (RoleName.STORE_ADMIN.value, RoleName.SUPER_ADMIN.value) and ticket.status == "OPEN":
+        # Si un admin responde un ticket abierto, pasa automáticamente a "en proceso".
+        # Excepción: si el ticket pertenece a una tienda, el Super Admin solo supervisa;
+        # es el Admin de Tienda quien debe tomarlo y avanzar su estado.
+        is_super_admin_on_store_ticket = role == RoleName.SUPER_ADMIN.value and ticket.store_id is not None
+        if role in (RoleName.STORE_ADMIN.value, RoleName.SUPER_ADMIN.value) and ticket.status == "OPEN" and not is_super_admin_on_store_ticket:
             ticket.status = "IN_PROGRESS"
 
         self.repository.update(ticket)
@@ -169,6 +172,11 @@ class TicketService:
 
         if role == RoleName.CLIENT.value:
             raise ForbiddenException("Los clientes no pueden cambiar el estado de un ticket")
+
+        if role == RoleName.SUPER_ADMIN.value and ticket.store_id is not None:
+            raise ForbiddenException(
+                "Este ticket pertenece a una tienda; solo el administrador de esa tienda puede gestionar su estado."
+            )
 
         ticket.status = data.status.value
         updated = self.repository.update(ticket)

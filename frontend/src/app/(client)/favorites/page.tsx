@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart, Trash2, ShoppingCart, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
 import { useCartStore } from "@/store/cart.store";
 import Toast from "@/components/shared/Toast";
 import PageTransition from "@/components/shared/PageTransition";
@@ -145,7 +145,7 @@ export default function FavoritesPage() {
                     <div className="relative h-44 bg-[#F5F5F7] overflow-hidden">
                       {fav.product.primary_image_url ? (
                         <img
-                          src={fav.product.primary_image_url}
+                          src={getFileUrl(fav.product.primary_image_url)}
                           alt={fav.product.name}
                           className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />

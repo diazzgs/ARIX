@@ -224,9 +224,26 @@ class UserService:
         created = self.repository.create(user)
         return UserResponse.model_validate(created)
 
-    def list_users(self, role_name: RoleName | None, page: int, size: int) -> tuple[list[UserResponse], int]:
+    def list_users(
+        self,
+        role_name: RoleName | None,
+        status: UserStatus | None,
+        search: str | None,
+        sort_by: str,
+        sort_dir: str,
+        page: int,
+        size: int,
+    ) -> tuple[list[UserResponse], int]:
         offset = max(page - 1, 0) * size
-        users, total = self.repository.list_all(role_name=role_name, offset=offset, limit=size)
+        users, total = self.repository.list_all(
+            role_name=role_name,
+            status=status,
+            search=search,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            offset=offset,
+            limit=size,
+        )
         return [UserResponse.model_validate(u) for u in users], total
 
     def update_user_status(self, user_id: int, data: UpdateUserStatusRequest) -> UserResponse:

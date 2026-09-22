@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, MapPin, Lock, CheckCircle } from "lucide-react";
+import { User, Mail, Phone, MapPin, Lock, CheckCircle, Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import Toast from "@/components/shared/Toast";
 import PageTransition from "@/components/shared/PageTransition";
 import AvatarUpload from "@/components/shared/AvatarUpload";
 
-export default function ProfilePage() {
+export default function StoreAccountPage() {
   const { user, updateUser } = useAuth();
   const [form, setForm] = useState({
     full_name: user?.full_name || "",
@@ -102,8 +102,9 @@ export default function ProfilePage() {
           </div>
           <div className="text-right">
             <p className="text-xs text-[#86868B]">Rol</p>
-            <span className="text-xs font-medium px-2.5 py-1 bg-[#F5F5F7] text-[#1D1D1F] rounded-full">
-              Cliente
+            <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full">
+              <Store size={12} />
+              Admin de Tienda
             </span>
           </div>
         </motion.div>

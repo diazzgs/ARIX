@@ -3,16 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Store } from "lucide-react";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
 
 interface StoreItem {
   id: number;
   business_name: string;
   slug: string;
   status: string;
+  logo_url: string | null;
   contact_email: string | null;
   admin: { full_name: string; email: string } | null;
 }
+
+const isCustomImage = (url: string | null | undefined): url is string =>
+  !!url && url.startsWith("/api/files/");
 
 export default function AdminStoresPage() {
   const [stores, setStores] = useState<StoreItem[]>([]);
@@ -65,8 +69,12 @@ export default function AdminStoresPage() {
                 <tr key={store.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-[#F5F5F7] rounded-xl flex items-center justify-center">
-                        <Store size={16} className="text-[#86868B]" />
+                      <div className="w-9 h-9 bg-[#F5F5F7] rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                        {isCustomImage(store.logo_url) ? (
+                          <img src={getFileUrl(store.logo_url)} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Store size={16} className="text-[#86868B]" />
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-[#1D1D1F]">{store.business_name}</p>

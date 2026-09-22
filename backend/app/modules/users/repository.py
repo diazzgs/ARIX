@@ -9,7 +9,7 @@ operaciones CRUD sobre los modelos User, Role y PasswordResetToken.
 
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import asc, desc, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.common.enums.roles import RoleName
@@ -55,7 +55,16 @@ class UserRepository:
         stmt = select(User.id).where(User.email == email)
         return self.db.execute(stmt).scalar_one_or_none() is not None
 
-    def list_all(self, role_name: RoleName | None = None, offset: int = 0, limit: int = 10) -> tuple[list[User], int]:
+    def list_all(
+        self,
+        role_name: RoleName | None = None,
+        status: UserStatus | None = None,
+        search: str | None = None,
+        sort_by: str = "created_at",
+        sort_dir: str = "desc",
+        offset: int = 0,
+        limit: int = 10,
+    ) -> tuple[list[User], int]:
         stmt = select(User).options(joinedload(User.role))
         count_stmt = select(User.id)
 
@@ -63,9 +72,26 @@ class UserRepository:
             stmt = stmt.join(Role).where(Role.name == role_name.value)
             count_stmt = count_stmt.join(Role).where(Role.name == role_name.value)
 
+        if status is not None:
+            stmt = stmt.where(User.status == status.value)
+            count_stmt = count_stmt.where(User.status == status.value)
+
+        if search:
+            term = f"%{search.strip()}%"
+            search_filter = or_(User.full_name.ilike(term), User.email.ilike(term))
+            stmt = stmt.where(search_filter)
+            count_stmt = count_stmt.where(search_filter)
+
         total = len(self.db.execute(count_stmt).all())
 
-        stmt = stmt.order_by(User.id.asc()).offset(offset).limit(limit)
+        sort_column = {
+            "full_name": User.full_name,
+            "email": User.email,
+            "created_at": User.created_at,
+        }.get(sort_by, User.created_at)
+        order_fn = asc if sort_dir == "asc" else desc
+
+        stmt = stmt.order_by(order_fn(sort_column)).offset(offset).limit(limit)
         items = list(self.db.execute(stmt).scalars().all())
 
         return items, total

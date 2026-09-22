@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Package, Tag, DollarSign, FileText, ToggleLeft, Warehouse } from "lucide-react";
+import { ArrowLeft, Trash2, Package, Tag, DollarSign, FileText, ToggleLeft, Warehouse, ImagePlus, X, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
 import Toast from "@/components/shared/Toast";
 
 interface Category {
   id: number;
   name: string;
+}
+
+interface ProductImage {
+  id: number;
+  image_url: string;
+  is_primary: boolean;
+  display_order: number;
 }
 
 export default function EditProductPage() {
@@ -26,6 +33,10 @@ export default function EditProductPage() {
     status: "ACTIVE",
   });
   const [stock, setStock] = useState({ stock_quantity: 0, min_stock: 5 });
+  const [images, setImages] = useState<ProductImage[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -50,6 +61,7 @@ export default function EditProductPage() {
             sku: p.sku || "",
             status: p.status || "ACTIVE",
           });
+          setImages(p.images || []);
         }
         const inv = invRes.data.data;
         if (inv) setStock({ stock_quantity: inv.stock_quantity, min_stock: inv.min_stock });
@@ -58,6 +70,42 @@ export default function EditProductPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [productId]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const isPrimary = images.length === 0;
+      const res = await api.post(
+        "/store/products/" + productId + "/images/upload?is_primary=" + isPrimary,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      setImages(res.data.data.images || []);
+      setToast({ visible: true, message: "✓ Foto agregada correctamente" });
+    } catch {
+      setToast({ visible: true, message: "Error al subir la foto" });
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteImage = async (imageId: number) => {
+    setDeletingImageId(imageId);
+    try {
+      const res = await api.delete("/store/products/" + productId + "/images/" + imageId);
+      setImages(res.data.data.images || []);
+      setToast({ visible: true, message: "Foto eliminada" });
+    } catch {
+      setToast({ visible: true, message: "Error al eliminar la foto" });
+    } finally {
+      setDeletingImageId(null);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -294,6 +342,71 @@ export default function EditProductPage() {
               </div>
             </div>
           </div>
+        </motion.div>
+
+        {/* Fotos del producto */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="bg-white rounded-2xl p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-2 mb-5">
+            <ImagePlus size={16} className="text-[#86868B]" />
+            <h2 className="font-semibold text-[#1D1D1F]">Fotos del producto</h2>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <AnimatePresence>
+              {images.map((img) => (
+                <motion.div
+                  key={img.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 group"
+                >
+                  <img src={getFileUrl(img.image_url)} alt="" className="w-full h-full object-cover" />
+                  {img.is_primary && (
+                    <span className="absolute top-1 left-1 bg-black/60 text-white rounded-full p-0.5">
+                      <Star size={10} className="fill-white" />
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteImage(img.id)}
+                    disabled={deletingImageId === img.id}
+                    title="Eliminar foto"
+                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center disabled:opacity-70"
+                  >
+                    <X size={18} className="text-white" />
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={uploadingImage}
+              className="w-20 h-20 rounded-xl border border-dashed border-gray-300 text-[#86868B] hover:border-gray-400 hover:text-[#1D1D1F] transition-colors flex flex-col items-center justify-center gap-1 disabled:opacity-50"
+            >
+              <ImagePlus size={18} />
+              <span className="text-[10px]">{uploadingImage ? "Subiendo..." : "Agregar"}</span>
+            </button>
+          </div>
+          {images.length === 0 && (
+            <p className="text-xs text-[#86868B] mt-3">
+              Este producto no tiene fotos todavía. La primera foto que agregues se usará como principal.
+            </p>
+          )}
         </motion.div>
 
         {/* Inventario */}

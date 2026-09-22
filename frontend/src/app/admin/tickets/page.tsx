@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import api from "@/lib/api";
 
 interface TicketItem {
@@ -28,6 +31,7 @@ const priorityColor = (p: string) => {
 };
 
 export default function AdminTicketsPage() {
+  const router = useRouter();
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -62,13 +66,20 @@ export default function AdminTicketsPage() {
                 <th className="text-left px-6 py-4 text-sm font-medium text-[#86868B]">Tienda</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-[#86868B]">Prioridad</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-[#86868B]">Estado</th>
+                <th className="px-6 py-4"></th>
               </tr>
             </thead>
             <tbody>
               {tickets.map((ticket) => (
-                <tr key={ticket.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                <tr
+                  key={ticket.id}
+                  onClick={() => router.push("/admin/tickets/" + ticket.id)}
+                  className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                >
                   <td className="px-6 py-4">
-                    <p className="text-sm font-mono text-[#1D1D1F]">{ticket.ticket_number}</p>
+                    <Link href={"/admin/tickets/" + ticket.id} className="text-sm font-mono text-[#1D1D1F] hover:underline">
+                      {ticket.ticket_number}
+                    </Link>
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm text-[#1D1D1F]">{ticket.subject}</p>
@@ -88,6 +99,9 @@ export default function AdminTicketsPage() {
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColor(ticket.status)}`}>
                       {ticket.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <ChevronRight size={16} className="text-[#86868B] inline-block" />
                   </td>
                 </tr>
               ))}
