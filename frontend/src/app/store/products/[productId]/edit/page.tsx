@@ -146,8 +146,12 @@ export default function EditProductPage() {
     try {
       await api.delete("/store/products/" + productId);
       router.push("/store/products");
-    } catch {
-      setToast({ visible: true, message: "Error al eliminar el producto" });
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setToast({
+        visible: true,
+        message: e?.response?.data?.message || "Error al eliminar el producto",
+      });
       setConfirmDelete(false);
     } finally {
       setDeleting(false);

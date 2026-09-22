@@ -9,6 +9,7 @@ from decimal import Decimal
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
+from app.modules.orders.models import OrderItem
 from app.modules.products.models import Product, ProductImage
 from app.modules.products.schemas import ProductFilterParams
 
@@ -165,6 +166,11 @@ class ProductRepository:
     def delete(self, product: Product) -> None:
         self.db.delete(product)
         self.db.commit()
+
+    def has_order_items(self, product_id: int) -> bool:
+        """True si el producto aparece en al menos un pedido ya realizado."""
+        stmt = select(OrderItem.id).where(OrderItem.product_id == product_id).limit(1)
+        return self.db.execute(stmt).scalar_one_or_none() is not None
 
     # -----------------------------------------------------------------
     # Imágenes

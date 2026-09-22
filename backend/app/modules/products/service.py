@@ -130,6 +130,13 @@ class ProductService:
 
     def delete_product(self, admin_user_id: int, product_id: int) -> None:
         product = self._get_owned_product_or_404(admin_user_id, product_id)
+
+        if self.repository.has_order_items(product.id):
+            raise ConflictException(
+                "No se puede eliminar un producto que ya tiene pedidos registrados. "
+                "Puedes desactivarlo desde el estado del producto para ocultarlo del catálogo."
+            )
+
         self.repository.delete(product)
 
     def list_my_products(self, admin_user_id: int, page: int, size: int) -> PageResponse[ProductResponse]:
