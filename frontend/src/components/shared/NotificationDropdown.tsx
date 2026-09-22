@@ -25,9 +25,10 @@ const typeColor = (type: string) => {
 interface Props {
   unreadCount: number;
   onCountChange: (count: number) => void;
+  href?: string;
 }
 
-export default function NotificationDropdown({ unreadCount, onCountChange }: Props) {
+export default function NotificationDropdown({ unreadCount, onCountChange, href = "/store/notifications" }: Props) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -188,7 +189,7 @@ export default function NotificationDropdown({ unreadCount, onCountChange }: Pro
             {/* Footer */}
             <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
               <Link
-                href="/store/notifications"
+                href={href}
                 onClick={() => setOpen(false)}
                 className="text-xs text-[#1D1D1F] font-medium hover:underline"
               >
