@@ -2,10 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { ShoppingBag, ChevronDown, ChevronUp, Package, FileText, Download } from "lucide-react";
 import api from "@/lib/api";
 import PageTransition from "@/components/shared/PageTransition";
 import Toast from "@/components/shared/Toast";
+
+interface OrderItem {
+  product_name: string;
+  product_image_url?: string | null;
+  unit_price: number;
+  quantity: number;
+  line_total: number;
+}
 
 interface StoreOrder {
   id: number;
@@ -14,7 +22,7 @@ interface StoreOrder {
   total: number;
   status: string;
   created_at: string;
-  items: { product_name: string; quantity: number; line_total: number }[];
+  items: OrderItem[];
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -42,6 +50,7 @@ export default function StoreOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [advancing, setAdvancing] = useState<number | null>(null);
+  const [downloadingInvoice, setDownloadingInvoice] = useState<number | null>(null);
   const [toast, setToast] = useState({ visible: false, message: "" });
   const [filter, setFilter] = useState("ALL");
 
@@ -66,6 +75,28 @@ export default function StoreOrdersPage() {
       setToast({ visible: true, message: "Error al actualizar el pedido" });
     } finally {
       setAdvancing(null);
+    }
+  };
+
+  const downloadInvoice = async (orderId: number) => {
+    setDownloadingInvoice(orderId);
+    try {
+      const invRes = await api.get("/store/orders/" + orderId + "/invoice");
+      const invoice = invRes.data.data;
+      const response = await api.get("/store/invoices/" + invoice.id + "/download", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", invoice.invoice_number + ".pdf");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setToast({ visible: true, message: "✓ Factura descargada correctamente" });
+    } catch {
+      setToast({ visible: true, message: "Error al descargar la factura" });
+    } finally {
+      setDownloadingInvoice(null);
     }
   };
 
@@ -209,25 +240,67 @@ export default function StoreOrdersPage() {
                           className="overflow-hidden"
                         >
                           <div className="px-5 pb-5 border-t border-gray-100 pt-4">
-                            <div className="space-y-2 mb-4">
+                            <div className="space-y-3 mb-4">
                               {order.items.map((item, i) => (
-                                <div key={i} className="flex items-center justify-between text-sm">
-                                  <span className="text-[#86868B]">{item.product_name} <span className="text-[#1D1D1F] font-medium">x{item.quantity}</span></span>
-                                  <span className="font-medium text-[#1D1D1F]">{"L. " + Number(item.line_total).toLocaleString("es-HN")}</span>
+                                <div key={i} className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-xl bg-[#F5F5F7] overflow-hidden shrink-0 flex items-center justify-center">
+                                    {item.product_image_url ? (
+                                      <img
+                                        src={item.product_image_url}
+                                        alt={item.product_name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <Package size={16} className="text-gray-300" />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-[#1D1D1F] truncate">{item.product_name}</p>
+                                    <p className="text-xs text-[#86868B]">
+                                      Cantidad: <span className="text-[#1D1D1F] font-medium">{item.quantity}</span>
+                                      {" · L. " + Number(item.unit_price).toLocaleString("es-HN") + " c/u"}
+                                    </p>
+                                  </div>
+                                  <span className="text-sm font-medium text-[#1D1D1F] shrink-0">
+                                    {"L. " + Number(item.line_total).toLocaleString("es-HN")}
+                                  </span>
                                 </div>
                               ))}
                             </div>
-                            {canAdvance && (
+
+                            <div className="flex gap-2">
                               <motion.button
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.99 }}
-                                onClick={(e) => { e.stopPropagation(); advance(order.id, order.status); }}
-                                disabled={advancing === order.id}
-                                className="w-full bg-[#1D1D1F] text-white py-2.5 rounded-xl text-sm font-medium hover:bg-black transition-colors disabled:opacity-50"
+                                onClick={(e) => { e.stopPropagation(); downloadInvoice(order.id); }}
+                                disabled={downloadingInvoice === order.id}
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-[#1D1D1F] hover:bg-gray-50 transition-colors disabled:opacity-50 shrink-0"
                               >
-                                {advancing === order.id ? "Actualizando..." : nextLabel[order.status]}
+                                {downloadingInvoice === order.id ? (
+                                  <>
+                                    <FileText size={15} />
+                                    Preparando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Download size={15} />
+                                    Factura
+                                  </>
+                                )}
                               </motion.button>
-                            )}
+
+                              {canAdvance && (
+                                <motion.button
+                                  whileHover={{ scale: 1.01 }}
+                                  whileTap={{ scale: 0.99 }}
+                                  onClick={(e) => { e.stopPropagation(); advance(order.id, order.status); }}
+                                  disabled={advancing === order.id}
+                                  className="flex-1 bg-[#1D1D1F] text-white py-2.5 rounded-xl text-sm font-medium hover:bg-black transition-colors disabled:opacity-50"
+                                >
+                                  {advancing === order.id ? "Actualizando..." : nextLabel[order.status]}
+                                </motion.button>
+                              )}
+                            </div>
                           </div>
                         </motion.div>
                       )}

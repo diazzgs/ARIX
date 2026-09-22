@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,23 +50,39 @@ export default function StoreAdminLayout({ children }: { children: React.ReactNo
         transition={{ duration: 0.25, ease: "easeInOut" }}
         className="bg-white border-r border-gray-100 flex flex-col shrink-0 overflow-hidden"
       >
-        <div className="px-4 py-5 border-b border-gray-100 flex items-center justify-between min-h-[72px]">
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.15 }}
-              >
-                <p className="text-lg font-bold text-[#1D1D1F]">ARIX</p>
-                <p className="text-xs text-[#86868B]">Admin de Tienda</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div
+          className={
+            "px-3 py-4 border-b border-gray-100 flex items-center min-h-[72px] " +
+            (collapsed ? "flex-col justify-center gap-2" : "justify-between px-4 py-5")
+          }
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Image
+              src="/arixLOGO.png"
+              alt="ARIX"
+              width={collapsed ? 28 : 34}
+              height={collapsed ? 28 : 34}
+              className="object-contain shrink-0 rounded-lg"
+            />
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.15 }}
+                  className="min-w-0"
+                >
+                  <p className="text-lg font-bold text-[#1D1D1F] leading-tight">ARIX</p>
+                  <p className="text-xs text-[#86868B] truncate">Admin de Tienda</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="p-2 rounded-xl hover:bg-gray-50 transition-colors text-[#86868B] hover:text-[#1D1D1F] ml-auto"
+            title={collapsed ? "Expandir" : "Colapsar"}
+            className="p-2 rounded-xl hover:bg-gray-50 transition-colors text-[#86868B] hover:text-[#1D1D1F] shrink-0"
           >
             {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
@@ -106,35 +123,61 @@ export default function StoreAdminLayout({ children }: { children: React.ReactNo
           })}
         </nav>
 
-        <div className={"px-3 py-4 border-t border-gray-100 " + (collapsed ? "flex flex-col items-center" : "")}>
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mb-3">
-                <p className="text-xs font-medium text-[#1D1D1F] truncate">{user?.full_name}</p>
-                <p className="text-xs text-[#86868B] truncate">{user?.email}</p>
+        <div className="px-3 py-3 border-t border-gray-100">
+          <AnimatePresence mode="wait">
+            {!collapsed ? (
+              <motion.div
+                key="expanded"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="bg-[#F5F5F7] rounded-2xl p-3 flex items-center gap-2.5"
+              >
+                <div className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center shrink-0">
+                  <span className="text-white text-sm font-bold">
+                    {user?.full_name?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#1D1D1F] truncate">{user?.full_name}</p>
+                  <p className="text-xs text-[#86868B] truncate">{user?.email}</p>
+                </div>
+                <button
+                  onClick={logout}
+                  title="Cerrar sesión"
+                  className="p-2 rounded-xl text-[#86868B] hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                >
+                  <LogOut size={16} />
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="collapsed"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex flex-col items-center gap-2"
+              >
+                <div
+                  className="w-9 h-9 rounded-xl bg-[#1D1D1F] flex items-center justify-center"
+                  title={user?.full_name}
+                >
+                  <span className="text-white text-sm font-bold">
+                    {user?.full_name?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <button
+                  onClick={logout}
+                  title="Cerrar sesión"
+                  className="p-2 rounded-xl text-[#86868B] hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut size={16} />
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
-          <button
-            onClick={logout}
-            title={collapsed ? "Cerrar sesión" : undefined}
-            className={"flex items-center gap-2 text-sm text-[#86868B] hover:text-red-500 transition-colors " + (collapsed ? "p-2 rounded-xl hover:bg-red-50 w-full justify-center" : "")}
-          >
-            <LogOut size={16} />
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="overflow-hidden whitespace-nowrap"
-                >
-                  Cerrar sesión
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
         </div>
       </motion.aside>
 
