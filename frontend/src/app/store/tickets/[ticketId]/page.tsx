@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Send } from "lucide-react";
+import { Send, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 
@@ -19,9 +20,23 @@ interface Ticket {
   ticket_number: string;
   subject: string;
   status: string;
+  priority: string;
   customer: { full_name: string; email: string };
   messages: Message[];
 }
+
+const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
+  OPEN: { label: "Abierto", color: "bg-blue-100 text-blue-700", icon: Clock },
+  IN_PROGRESS: { label: "En progreso", color: "bg-yellow-100 text-yellow-700", icon: AlertCircle },
+  RESOLVED: { label: "Resuelto", color: "bg-green-100 text-green-700", icon: CheckCircle },
+  CLOSED: { label: "Cerrado", color: "bg-gray-100 text-gray-700", icon: CheckCircle },
+};
+
+const priorityConfig: Record<string, { label: string; color: string }> = {
+  LOW: { label: "Baja", color: "bg-gray-100 text-gray-600" },
+  MEDIUM: { label: "Media", color: "bg-yellow-100 text-yellow-700" },
+  HIGH: { label: "Alta", color: "bg-red-100 text-red-700" },
+};
 
 export default function StoreTicketDetailPage() {
   const { ticketId } = useParams();
@@ -30,6 +45,7 @@ export default function StoreTicketDetailPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const fetchTicket = () => {
@@ -40,7 +56,9 @@ export default function StoreTicketDetailPage() {
   };
 
   useEffect(() => { fetchTicket(); }, [ticketId]);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [ticket?.messages]);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [ticket?.messages]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,84 +76,170 @@ export default function StoreTicketDetailPage() {
   };
 
   const updateStatus = async (status: string) => {
-    await api.put("/tickets/" + ticketId + "/status", { status });
-    fetchTicket();
+    setResolving(true);
+    try {
+      await api.put("/tickets/" + ticketId + "/status", { status });
+      fetchTicket();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setResolving(false);
+    }
   };
 
-  if (loading) return <p className="text-[#86868B]">Cargando ticket...</p>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <p className="text-[#86868B]">Cargando ticket...</p>
+    </div>
+  );
   if (!ticket) return <p className="text-red-500">Ticket no encontrado</p>;
 
+  const statusInfo = statusConfig[ticket.status] || statusConfig.OPEN;
+  const priorityInfo = priorityConfig[ticket.priority] || priorityConfig.MEDIUM;
+  const StatusIcon = statusInfo.icon;
+
   return (
-    <div className="max-w-2xl">
-      <Link href="/store/tickets" className="text-[#86868B] hover:text-[#1D1D1F] text-sm mb-6 inline-block">
-        ← Tickets
-      </Link>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="max-w-2xl"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <Link
+          href="/store/tickets"
+          className="flex items-center gap-1 text-[#86868B] hover:text-[#1D1D1F] text-sm transition-colors"
+        >
+          ← Tickets
+        </Link>
+        {ticket.status !== "CLOSED" && ticket.status !== "RESOLVED" && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => updateStatus("RESOLVED")}
+            disabled={resolving}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            <CheckCircle size={15} />
+            {resolving ? "Marcando..." : "Marcar resuelto"}
+          </motion.button>
+        )}
+      </div>
 
-      <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-mono text-[#86868B]">{ticket.ticket_number}</p>
-            <h1 className="text-lg font-bold text-[#1D1D1F] mt-0.5">{ticket.subject}</h1>
-            <p className="text-xs text-[#86868B] mt-0.5">
-              {ticket.customer.full_name} · {ticket.customer.email}
-            </p>
+      {/* Info del ticket */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-2xl p-6 shadow-sm mb-4"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <p className="text-xs font-mono text-[#86868B] mb-1">{ticket.ticket_number}</p>
+            <h1 className="text-xl font-bold text-[#1D1D1F] mb-3">{ticket.subject}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={"flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium " + statusInfo.color}>
+                <StatusIcon size={12} />
+                {statusInfo.label}
+              </span>
+              <span className={"px-2.5 py-1 rounded-full text-xs font-medium " + priorityInfo.color}>
+                Prioridad {priorityInfo.label}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col gap-2 items-end">
-            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-              ticket.status === "OPEN" ? "bg-blue-100 text-blue-700" :
-              ticket.status === "IN_PROGRESS" ? "bg-yellow-100 text-yellow-700" :
-              ticket.status === "RESOLVED" ? "bg-green-100 text-green-700" :
-              "bg-gray-100 text-gray-700"
-            }`}>
-              {ticket.status}
-            </span>
-            {ticket.status !== "CLOSED" && ticket.status !== "RESOLVED" && (
-              <button
-                onClick={() => updateStatus("RESOLVED")}
-                className="text-xs text-green-700 hover:underline"
-              >
-                Marcar resuelto
-              </button>
+          <div className="text-right shrink-0">
+            <p className="text-sm font-medium text-[#1D1D1F]">{ticket.customer.full_name}</p>
+            <p className="text-xs text-[#86868B]">{ticket.customer.email}</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Mensajes */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white rounded-2xl p-5 shadow-sm mb-4"
+        style={{ minHeight: "300px", maxHeight: "420px", overflowY: "auto" }}
+      >
+        <AnimatePresence>
+          <div className="space-y-4">
+            {ticket.messages.length === 0 ? (
+              <p className="text-sm text-[#86868B] text-center py-8">No hay mensajes aún</p>
+            ) : (
+              ticket.messages.map((msg, index) => {
+                const isMe = msg.sender.id === user?.id;
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={"flex " + (isMe ? "justify-end" : "justify-start")}
+                  >
+                    <div className={"max-w-xs " + (isMe ? "items-end" : "items-start") + " flex flex-col gap-1"}>
+                      {!isMe && (
+                        <p className="text-xs text-[#86868B] px-1">{msg.sender.full_name}</p>
+                      )}
+                      <div className={"px-4 py-3 rounded-2xl text-sm leading-relaxed " + (isMe ? "bg-[#1D1D1F] text-white rounded-br-sm" : "bg-[#F5F5F7] text-[#1D1D1F] rounded-bl-sm")}>
+                        {msg.message}
+                      </div>
+                      <p className="text-xs text-[#86868B] px-1">
+                        {new Date(msg.created_at).toLocaleTimeString("es-HN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })
             )}
+            <div ref={bottomRef} />
           </div>
-        </div>
-      </div>
+        </AnimatePresence>
+      </motion.div>
 
-      <div className="bg-white rounded-2xl p-5 shadow-sm mb-4 max-h-96 overflow-y-auto">
-        <div className="space-y-4">
-          {ticket.messages.map((msg) => {
-            const isMe = msg.sender.id === user?.id;
-            return (
-              <div key={msg.id} className={"flex " + (isMe ? "justify-end" : "justify-start")}>
-                <div className={"max-w-xs px-4 py-2.5 rounded-2xl text-sm " + (isMe ? "bg-[#1D1D1F] text-white" : "bg-[#F5F5F7] text-[#1D1D1F]")}>
-                  {!isMe && <p className="text-xs font-medium mb-1 opacity-70">{msg.sender.full_name}</p>}
-                  <p>{msg.message}</p>
-                </div>
-              </div>
-            );
-          })}
-          <div ref={bottomRef} />
-        </div>
-      </div>
-
-      {ticket.status !== "CLOSED" && (
-        <form onSubmit={sendMessage} className="flex gap-3">
+      {/* Input de mensaje */}
+      {ticket.status !== "CLOSED" && ticket.status !== "RESOLVED" && (
+        <motion.form
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          onSubmit={sendMessage}
+          className="flex gap-3"
+        >
           <input
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Escribe tu respuesta..."
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white"
           />
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             type="submit"
             disabled={sending || !message.trim()}
             className="bg-[#1D1D1F] text-white px-4 py-3 rounded-xl hover:bg-black transition-colors disabled:opacity-50"
           >
             <Send size={18} />
-          </button>
-        </form>
+          </motion.button>
+        </motion.form>
       )}
-    </div>
+
+      {ticket.status === "RESOLVED" && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-green-50 border border-green-100 rounded-2xl p-4 text-center"
+        >
+          <CheckCircle size={20} className="text-green-600 mx-auto mb-2" />
+          <p className="text-sm text-green-700 font-medium">Ticket resuelto</p>
+          <p className="text-xs text-green-600 mt-0.5">Este ticket ha sido marcado como resuelto</p>
+        </motion.div>
+      )}
+    </motion.div>
   );
 }
