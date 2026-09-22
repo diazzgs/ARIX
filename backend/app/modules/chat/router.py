@@ -16,6 +16,7 @@ Autenticación en WebSocket:
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
+from app.common.enums.roles import RoleName
 from app.common.schemas.response import ApiResponse
 from app.core.dependencies import get_current_user
 from app.core.security import ACCESS_TOKEN_TYPE, JWTError, decode_token
@@ -25,6 +26,7 @@ from app.modules.chat.repository import ChatRepository
 from app.modules.chat.schemas import (
     ChatResponse,
     ChatSummaryResponse,
+    ChatUserSummary,
     SendMessageRequest,
     StartChatRequest,
 )
@@ -79,6 +81,31 @@ def start_or_get_chat(
 
 
 @router.get(
+    "/chats/contacts",
+    response_model=ApiResponse[list[ChatUserSummary]],
+    summary="Listar contactos disponibles para iniciar un chat",
+)
+def list_chat_contacts(
+    role: RoleName = Query(
+        ..., description="Rol de los contactos a listar (ROLE_SUPER_ADMIN o ROLE_STORE_ADMIN)"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    """
+    Lista usuarios activos del rol indicado con los que el usuario autenticado
+    puede iniciar una conversación. Por ejemplo, un Admin de Tienda puede pedir
+    `role=ROLE_SUPER_ADMIN` para ver a quién contactar en soporte, y el Super
+    Admin puede pedir `role=ROLE_STORE_ADMIN` para contactar a una tienda.
+
+    NOTA: esta ruta debe declararse antes de `/chats/{chat_id}` para que
+    "contacts" no sea interpretado como un chat_id.
+    """
+    result = service.list_chat_contacts(current_user.role.name, role)
+    return ApiResponse.ok(result)
+
+
+@router.get(
     "/chats/{chat_id}",
     response_model=ApiResponse[ChatResponse],
     summary="Obtener una conversación con su historial",
@@ -91,6 +118,21 @@ def get_chat(
     """Obtiene el historial completo de una conversación y marca los mensajes recibidos como leídos."""
     result = service.get_chat(current_user.id, chat_id)
     return ApiResponse.ok(result)
+
+
+@router.delete(
+    "/chats/{chat_id}",
+    response_model=ApiResponse[dict],
+    summary="Eliminar una conversación",
+)
+def delete_chat(
+    chat_id: int,
+    current_user: User = Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    """Elimina una conversación propia junto con todos sus mensajes."""
+    service.delete_chat(current_user.id, chat_id)
+    return ApiResponse.ok({}, message="Conversación eliminada")
 
 
 @router.post(

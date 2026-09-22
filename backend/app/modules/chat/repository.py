@@ -75,6 +75,11 @@ class ChatRepository:
         self.db.commit()
         self.db.refresh(chat)
 
+    def delete(self, chat: Chat) -> None:
+        """Elimina una conversación y, en cascada, todos sus mensajes."""
+        self.db.delete(chat)
+        self.db.commit()
+
     # -----------------------------------------------------------------
     # Mensajes
     # -----------------------------------------------------------------

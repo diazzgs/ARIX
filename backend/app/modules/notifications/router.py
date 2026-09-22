@@ -84,6 +84,24 @@ def mark_all_as_read(
 
 
 @router.delete(
+    "/notifications/all",
+    response_model=ApiResponse[dict],
+    summary="Eliminar todas mis notificaciones",
+)
+def delete_all_notifications(
+    current_user: User = Depends(get_current_user),
+    service: NotificationService = Depends(get_notification_service),
+):
+    """Elimina todas las notificaciones del usuario autenticado.
+
+    NOTA: esta ruta debe declararse antes de `/notifications/{notification_id}`
+    para que "all" no sea interpretado como un notification_id.
+    """
+    service.delete_all_notifications(current_user.id)
+    return ApiResponse.ok({}, message="Notificaciones eliminadas")
+
+
+@router.delete(
     "/notifications/{notification_id}",
     response_model=ApiResponse[dict],
     summary="Eliminar notificación",

@@ -55,6 +55,9 @@ class NotificationService:
 
         self.repository.delete(notification)
 
+    def delete_all_notifications(self, user_id: int) -> None:
+        self.repository.delete_all_by_user(user_id)
+
     # -----------------------------------------------------------------
     # Helper interno para que otros módulos generen notificaciones
     # -----------------------------------------------------------------

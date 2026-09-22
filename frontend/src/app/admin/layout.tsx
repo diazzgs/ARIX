@@ -10,6 +10,7 @@ import {
   Ticket,
   Star,
   ScrollText,
+  MessageCircle,
   Bell,
   LogOut,
 } from "lucide-react";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/admin/tickets", label: "Tickets", icon: Ticket },
   { href: "/admin/reviews", label: "Reseñas", icon: Star },
   { href: "/admin/audit", label: "Auditoría", icon: ScrollText },
+  { href: "/admin/chat", label: "Chat", icon: MessageCircle },
   { href: "/admin/notifications", label: "Notificaciones", icon: Bell },
 ];
 

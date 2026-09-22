@@ -20,6 +20,7 @@ from app.modules.chat.repository import ChatRepository
 from app.modules.chat.schemas import (
     ChatResponse,
     ChatSummaryResponse,
+    ChatUserSummary,
     MessageResponse,
     SendMessageRequest,
     StartChatRequest,
@@ -98,6 +99,32 @@ class ChatService:
 
         refreshed = self.repository.get_by_id(chat_id)
         return self._to_chat_response(refreshed, user_id)
+
+    def delete_chat(self, user_id: int, chat_id: int) -> None:
+        chat = self._get_or_404(chat_id)
+        self._ensure_participant(user_id, chat)
+        self.repository.delete(chat)
+
+    # -----------------------------------------------------------------
+    # Contactos disponibles para iniciar un chat
+    # -----------------------------------------------------------------
+
+    def list_chat_contacts(self, current_role: str, target_role: RoleName) -> list[ChatUserSummary]:
+        """
+        Lista usuarios activos de `target_role` con los que el usuario
+        autenticado puede iniciar una conversación (ej. un Admin de Tienda
+        listando Super Admins para contactar soporte, y viceversa).
+
+        No se permite listar Clientes por esta vía (ya existe /stores/{slug}
+        para que un cliente contacte al admin de una tienda puntual).
+        """
+        if target_role == RoleName.CLIENT:
+            raise ForbiddenException("No es posible listar clientes como contactos de chat")
+
+        self._validate_chat_roles(current_role, target_role.value)
+
+        users = self.user_repository.list_active_by_role(target_role)
+        return [ChatUserSummary.model_validate(u) for u in users]
 
     # -----------------------------------------------------------------
     # Envío de mensajes (HTTP, con push WebSocket al destinatario)

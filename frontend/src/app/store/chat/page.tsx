@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2, MessageCircle } from "lucide-react";
+import { Trash2, MessageCircle, Plus, X, Search, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
@@ -23,6 +23,12 @@ interface Message {
   created_at: string;
 }
 
+interface Contact {
+  id: number;
+  full_name: string;
+  profile_image_url: string;
+}
+
 export default function StoreChatPage() {
   const { user } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
@@ -33,6 +39,13 @@ export default function StoreChatPage() {
   const [sending, setSending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Chat | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Nueva conversación con Super Admin (soporte)
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [supportContacts, setSupportContacts] = useState<Contact[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [search, setSearch] = useState("");
 
   const fetchChats = () => {
     api.get("/chats")
@@ -48,6 +61,46 @@ export default function StoreChatPage() {
   };
 
   useEffect(() => { fetchChats(); }, []);
+
+  const openNewChatModal = async () => {
+    setShowNewChat(true);
+    setLoadingContacts(true);
+    try {
+      const res = await api.get("/chats/contacts?role=ROLE_SUPER_ADMIN");
+      setSupportContacts(res.data.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  const closeNewChatModal = () => {
+    setShowNewChat(false);
+    setSearch("");
+  };
+
+  const startNewChat = async (contact: Contact) => {
+    setStarting(true);
+    try {
+      const res = await api.post("/chats", { other_user_id: contact.id });
+      closeNewChatModal();
+      await fetchChats();
+
+      const chatId = res.data.data.id;
+      const chatRes = await api.get("/chats/" + chatId);
+      setSelectedChat(res.data.data);
+      setMessages(chatRes.data.data.messages || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const filteredContacts = supportContacts.filter((c) =>
+    c.full_name.toLowerCase().includes(search.toLowerCase())
+  );
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,9 +138,20 @@ export default function StoreChatPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[#1D1D1F] mb-6">Chat</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-[#1D1D1F]">Chat</h1>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={openNewChatModal}
+          className="flex items-center gap-2 bg-[#1D1D1F] text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-black transition-colors"
+        >
+          <Plus size={16} />
+          Contactar a soporte
+        </motion.button>
+      </div>
 
-      {/* Modal de confirmación */}
+      {/* Modal de confirmación de borrado */}
       <AnimatePresence>
         {confirmDelete && (
           <motion.div
@@ -136,6 +200,87 @@ export default function StoreChatPage() {
         )}
       </AnimatePresence>
 
+      {/* Modal nueva conversación con soporte (Super Admin) */}
+      <AnimatePresence>
+        {showNewChat && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={closeNewChatModal}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-[#1D1D1F]">Contactar a soporte</h2>
+                <button
+                  onClick={closeNewChatModal}
+                  className="p-1.5 rounded-lg text-[#86868B] hover:bg-gray-100 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {supportContacts.length > 1 && (
+                <div className="relative mb-3">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#86868B]" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar..."
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {loadingContacts ? (
+                  <p className="text-sm text-[#86868B] text-center py-6">Cargando...</p>
+                ) : filteredContacts.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-[#86868B]">No hay super administradores disponibles</p>
+                  </div>
+                ) : (
+                  filteredContacts.map((contact) => (
+                    <motion.button
+                      key={contact.id}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => startNewChat(contact)}
+                      disabled={starting}
+                      className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-[#F5F5F7] rounded-lg flex items-center justify-center">
+                          <ShieldCheck size={16} className="text-[#1D1D1F]" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-[#1D1D1F]">{contact.full_name}</p>
+                          <p className="text-xs text-[#86868B]">Super Administrador</p>
+                        </div>
+                      </div>
+                    </motion.button>
+                  ))
+                )}
+              </div>
+
+              {starting && (
+                <p className="text-xs text-[#86868B] text-center mt-3">Iniciando conversación...</p>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div
         className="bg-white rounded-2xl shadow-sm overflow-hidden flex"
         style={{ height: "600px" }}
@@ -148,9 +293,15 @@ export default function StoreChatPage() {
           {loading ? (
             <p className="text-sm text-[#86868B] p-4">Cargando...</p>
           ) : chats.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-              <MessageCircle size={28} className="text-gray-300 mb-2" />
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
+              <MessageCircle size={28} className="text-gray-300" />
               <p className="text-sm text-[#86868B]">No tienes conversaciones</p>
+              <button
+                onClick={openNewChatModal}
+                className="text-xs text-[#1D1D1F] font-medium underline"
+              >
+                Contactar a soporte
+              </button>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto">
@@ -285,6 +436,12 @@ export default function StoreChatPage() {
             <div className="flex-1 flex flex-col items-center justify-center gap-3">
               <MessageCircle size={32} className="text-gray-300" />
               <p className="text-sm text-[#86868B]">Selecciona una conversación</p>
+              <button
+                onClick={openNewChatModal}
+                className="text-sm text-[#1D1D1F] font-medium underline"
+              >
+                o contacta a soporte
+              </button>
             </div>
           )}
         </div>

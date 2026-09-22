@@ -197,7 +197,7 @@ export default function NotificationDropdown({ unreadCount, onCountChange }: Pro
               {notifications.length > 0 && (
                 <button
                   onClick={async () => {
-                    await Promise.all(notifications.map((n) => api.delete("/notifications/" + n.id)));
+                    await api.delete("/notifications/all");
                     setNotifications([]);
                     onCountChange(0);
                   }}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Store, Mail, Phone, MapPin, Zap, Globe, Instagram, Facebook, FileText, Building2 } from "lucide-react";
+import { Store, Mail, Phone, MapPin, Zap, Globe, FileText, Building2 } from "lucide-react";
+import { FaFacebook, FaInstagram } from "react-icons/fa";
 import { motion } from "framer-motion";
 import api from "@/lib/api";
 import Toast from "@/components/shared/Toast";
@@ -216,8 +217,8 @@ export default function StoreProfilePage() {
               </div>
               <div className="space-y-4">
                 {[
-                  { label: "Facebook", key: "social_facebook", icon: Facebook },
-                  { label: "Instagram", key: "social_instagram", icon: Instagram },
+                  { label: "Facebook", key: "social_facebook", icon: FaFacebook },
+                  { label: "Instagram", key: "social_instagram", icon: FaInstagram },
                   { label: "Sitio web", key: "social_website", icon: Globe },
                 ].map(({ label, key, icon: Icon }) => (
                   <div key={key}>

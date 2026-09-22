@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.common.enums.roles import RoleName
+from app.common.enums.statuses import UserStatus
 from app.modules.users.models import PasswordResetToken, Role, User
 
 
@@ -68,6 +69,18 @@ class UserRepository:
         items = list(self.db.execute(stmt).scalars().all())
 
         return items, total
+
+    def list_active_by_role(self, role_name: RoleName) -> list[User]:
+        """Lista usuarios activos de un rol dado, sin paginar (ej. para listar
+        contactos disponibles al iniciar un chat)."""
+        stmt = (
+            select(User)
+            .join(Role)
+            .options(joinedload(User.role))
+            .where(Role.name == role_name.value, User.status == UserStatus.ACTIVE.value)
+            .order_by(User.full_name.asc())
+        )
+        return list(self.db.execute(stmt).scalars().all())
 
     def create(self, user: User) -> User:
         self.db.add(user)

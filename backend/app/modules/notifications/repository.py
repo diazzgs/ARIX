@@ -68,3 +68,9 @@ class NotificationRepository:
     def delete(self, notification: Notification) -> None:
         self.db.delete(notification)
         self.db.commit()
+
+    def delete_all_by_user(self, user_id: int) -> None:
+        stmt = select(Notification).where(Notification.user_id == user_id)
+        for notification in self.db.execute(stmt).scalars().all():
+            self.db.delete(notification)
+        self.db.commit()
