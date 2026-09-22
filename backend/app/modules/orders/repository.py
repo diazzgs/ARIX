@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.modules.orders.models import Order, OrderItem, Payment, StoreOrder
+from app.modules.products.models import Product
 
 
 class OrderRepository:
@@ -25,7 +26,10 @@ class OrderRepository:
             select(Order)
             .options(
                 joinedload(Order.store_orders).joinedload(StoreOrder.store),
-                joinedload(Order.store_orders).joinedload(StoreOrder.items),
+                joinedload(Order.store_orders)
+                .joinedload(StoreOrder.items)
+                .joinedload(OrderItem.product)
+                .joinedload(Product.images),
                 joinedload(Order.payment),
             )
             .where(Order.id == order_id)
@@ -37,7 +41,10 @@ class OrderRepository:
             select(Order)
             .options(
                 joinedload(Order.store_orders).joinedload(StoreOrder.store),
-                joinedload(Order.store_orders).joinedload(StoreOrder.items),
+                joinedload(Order.store_orders)
+                .joinedload(StoreOrder.items)
+                .joinedload(OrderItem.product)
+                .joinedload(Product.images),
                 joinedload(Order.payment),
             )
             .where(Order.order_number == order_number)
@@ -81,7 +88,7 @@ class OrderRepository:
             select(StoreOrder)
             .options(
                 joinedload(StoreOrder.store),
-                joinedload(StoreOrder.items),
+                joinedload(StoreOrder.items).joinedload(OrderItem.product).joinedload(Product.images),
                 joinedload(StoreOrder.order),
             )
             .where(StoreOrder.id == store_order_id)
@@ -94,7 +101,7 @@ class OrderRepository:
         stmt = (
             select(StoreOrder)
             .options(
-                joinedload(StoreOrder.items),
+                joinedload(StoreOrder.items).joinedload(OrderItem.product).joinedload(Product.images),
                 joinedload(StoreOrder.order).joinedload(Order.customer),
             )
             .where(StoreOrder.store_id == store_id)

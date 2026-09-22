@@ -24,15 +24,22 @@ from app.modules.invoices.models import Invoice
 from app.modules.invoices.repository import InvoiceRepository
 from app.modules.invoices.schemas import InvoiceResponse
 from app.modules.orders.repository import OrderRepository
+from app.modules.stores.repository import StoreRepository
 from app.utils.file_storage import SUBFOLDER_INVOICES
 
 
 class InvoiceService:
     """Casos de uso relacionados a la generación y consulta de facturas."""
 
-    def __init__(self, repository: InvoiceRepository, order_repository: OrderRepository):
+    def __init__(
+        self,
+        repository: InvoiceRepository,
+        order_repository: OrderRepository,
+        store_repository: StoreRepository,
+    ):
         self.repository = repository
         self.order_repository = order_repository
+        self.store_repository = store_repository
 
     # -----------------------------------------------------------------
     # Listado / generación de facturas de una orden (Cliente)
@@ -63,6 +70,69 @@ class InvoiceService:
             raise ResourceNotFoundException("Factura no encontrada")
 
         if invoice.customer_id != customer_id:
+            raise ForbiddenException("No tienes acceso a esta factura")
+
+        if not invoice.pdf_url:
+            raise ResourceNotFoundException("El archivo PDF de esta factura no está disponible")
+
+        relative = invoice.pdf_url.removeprefix("/api/files/")
+        path = Path(settings.UPLOAD_DIR) / relative
+        if not path.exists():
+            raise ResourceNotFoundException("El archivo PDF de esta factura no se encuentra en el servidor")
+
+        return path
+
+    # -----------------------------------------------------------------
+    # Facturas de una suborden (Admin de Tienda)
+    # -----------------------------------------------------------------
+
+    def get_or_generate_store_invoice(self, admin_user_id: int, store_order_id: int) -> InvoiceResponse:
+        """
+        Retorna la factura (tipo STORE) de un pedido propio del Admin de
+        Tienda, generándola si aún no existe. Nunca retorna la factura
+        consolidada, para no exponer datos de otras tiendas.
+        """
+        store = self.store_repository.get_by_admin_user_id(admin_user_id)
+        if store is None:
+            raise ResourceNotFoundException("No tienes una tienda asignada")
+
+        store_order = self.order_repository.get_store_order_by_id(store_order_id)
+        if store_order is None:
+            raise ResourceNotFoundException("Pedido no encontrado")
+
+        if store_order.store_id != store.id:
+            raise ForbiddenException("Este pedido no pertenece a tu tienda")
+
+        existing = self.repository.get_by_order_and_store_order(store_order.order_id, store_order.id)
+        if existing is not None:
+            return InvoiceResponse.model_validate(existing)
+
+        order = self.order_repository.get_by_id(store_order.order_id)
+        if order is None:
+            raise ResourceNotFoundException("Orden no encontrada")
+
+        generated = self._generate_all_invoices(order)
+        for invoice in generated:
+            if invoice.store_order_id == store_order.id:
+                return invoice
+
+        raise ResourceNotFoundException("No fue posible generar la factura de este pedido")
+
+    def get_store_invoice_pdf_path(self, admin_user_id: int, invoice_id: int) -> Path:
+        """Retorna la ruta del PDF de una factura (tipo STORE) propia del Admin de Tienda."""
+        store = self.store_repository.get_by_admin_user_id(admin_user_id)
+        if store is None:
+            raise ResourceNotFoundException("No tienes una tienda asignada")
+
+        invoice = self.repository.get_by_id(invoice_id)
+        if invoice is None:
+            raise ResourceNotFoundException("Factura no encontrada")
+
+        if invoice.type != InvoiceType.STORE.value:
+            raise ForbiddenException("No tienes acceso a esta factura")
+
+        store_order = self.order_repository.get_store_order_by_id(invoice.store_order_id)
+        if store_order is None or store_order.store_id != store.id:
             raise ForbiddenException("No tienes acceso a esta factura")
 
         if not invoice.pdf_url:
