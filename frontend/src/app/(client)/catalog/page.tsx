@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, Flame, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import api, { getFileUrl } from "@/lib/api";
 import PageTransition from "@/components/shared/PageTransition";
@@ -26,10 +26,17 @@ interface Category {
 export default function CatalogPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [featured, setFeatured] = useState<Product[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const featuredScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollFeatured = (direction: "left" | "right") => {
+    featuredScrollRef.current?.scrollBy({ left: direction === "left" ? -320 : 320, behavior: "smooth" });
+  };
 
   const fetchProducts = (s = search, c = categoryId) => {
     setLoading(true);
@@ -46,6 +53,10 @@ export default function CatalogPage() {
     api.get("/categories?flat=true")
       .then((res) => setCategories(res.data.data))
       .catch(console.error);
+    api.get("/products?size=12&sort_by=popularity&sort_dir=desc")
+      .then((res) => setFeatured(res.data.data.content))
+      .catch(console.error)
+      .finally(() => setLoadingFeatured(false));
     const timer = setTimeout(() => fetchProducts(), 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,6 +90,96 @@ export default function CatalogPage() {
             {loading ? "Cargando..." : products.length + " productos disponibles"}
           </p>
         </motion.div>
+
+        {/* Destacados */}
+        {loadingFeatured ? (
+          <div className="flex gap-4 mb-8 overflow-hidden">
+            {[...Array(4)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{ opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
+                className="w-52 h-56 bg-white rounded-2xl shadow-sm shrink-0"
+              />
+            ))}
+          </div>
+        ) : featured.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="mb-8"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Flame size={16} className="text-orange-500" />
+                <h2 className="text-sm font-semibold text-[#1D1D1F] uppercase tracking-wide">Destacados</h2>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => scrollFeatured("left")}
+                  aria-label="Ver destacados anteriores"
+                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-[#86868B] hover:text-[#1D1D1F] transition-colors"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+                <button
+                  onClick={() => scrollFeatured("right")}
+                  aria-label="Ver más destacados"
+                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-[#86868B] hover:text-[#1D1D1F] transition-colors"
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            </div>
+            <div
+              ref={featuredScrollRef}
+              className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {featured.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className="shrink-0 w-52 snap-start"
+                >
+                  <Link
+                    href={"/catalog/" + product.id}
+                    className="block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow group"
+                  >
+                    <div className="relative h-36 bg-[#F5F5F7] overflow-hidden">
+                      {product.primary_image_url ? (
+                        <img
+                          src={getFileUrl(product.primary_image_url)}
+                          alt={product.name}
+                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-4xl">📦</div>
+                      )}
+                      {product.rating_count > 0 && (
+                        <div className="absolute top-2 right-2">
+                          <span className="bg-white/90 backdrop-blur-sm text-[#1D1D1F] text-xs font-medium px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                            ★ {Number(product.rating_avg).toFixed(1)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <p className="text-xs text-[#86868B] mb-0.5 truncate">{product.store.business_name}</p>
+                      <p className="text-sm font-medium text-[#1D1D1F] line-clamp-1">{product.name}</p>
+                      <p className="text-sm font-bold text-[#1D1D1F] mt-1.5">
+                        {"L. " + Number(product.price).toLocaleString("es-HN")}
+                      </p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Barra de búsqueda */}
         <motion.div

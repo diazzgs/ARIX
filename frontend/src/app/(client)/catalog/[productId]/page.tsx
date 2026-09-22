@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Star, ShoppingCart, Heart, MessageCircle, Package } from "lucide-react";
+import { Star, ShoppingCart, Heart, MessageCircle, Package, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import api, { getFileUrl } from "@/lib/api";
 import { useAuthStore } from "@/store/auth.store";
@@ -189,7 +189,6 @@ export default function ProductDetailPage() {
   );
   if (!product) return <p className="text-red-500">Producto no encontrado</p>;
 
-  const primaryImage = product.images.find((i) => i.is_primary) || product.images[0];
   const isClient = isAuthenticated && user?.role.name === "ROLE_CLIENT";
   const myReview = user ? reviews.find((r) => r.customer.id === user.id) : undefined;
   const otherReviews = user ? reviews.filter((r) => r.customer.id !== user.id) : reviews;
@@ -202,6 +201,15 @@ export default function ProductDetailPage() {
         onClose={() => setToast({ ...toast, visible: false })}
       />
 
+      {/* Volver */}
+      <button
+        onClick={() => router.back()}
+        className="flex items-center gap-1.5 text-sm text-[#86868B] hover:text-[#1D1D1F] transition-colors mb-4 group"
+      >
+        <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+        Volver
+      </button>
+
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-[#86868B] mb-6">
         <Link href="/catalog" className="hover:text-[#1D1D1F] transition-colors">Catálogo</Link>
@@ -212,33 +220,8 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Imagen */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
-          className="bg-white rounded-3xl overflow-hidden shadow-sm"
-          style={{ minHeight: "400px" }}
-        >
-          {primaryImage ? (
-            <img
-              src={getFileUrl(primaryImage.image_url)}
-              alt={product.name}
-              className="w-full h-full object-cover"
-              style={{ minHeight: "400px" }}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full" style={{ minHeight: "400px" }}>
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <Package size={64} className="text-gray-300" />
-              </motion.div>
-              <p className="text-sm text-[#86868B] mt-3">Sin imagen disponible</p>
-            </div>
-          )}
-        </motion.div>
+        {/* Galería de fotos */}
+        <ProductGallery key={product.id} product={product} />
 
         {/* Info */}
         <motion.div
@@ -550,5 +533,101 @@ export default function ProductDetailPage() {
         </motion.div>
       )}
     </div>
+  );
+}
+
+function ProductGallery({ product }: { product: Product }) {
+  const images = product.images;
+  const [activeImageIndex, setActiveImageIndex] = useState(() => {
+    const primaryIdx = images.findIndex((i) => i.is_primary);
+    return primaryIdx >= 0 ? primaryIdx : 0;
+  });
+  const activeImage = images[activeImageIndex] || images[0];
+  const hasMultipleImages = images.length > 1;
+  const goToImage = (index: number) => setActiveImageIndex(index);
+  const prevImage = () => setActiveImageIndex((i) => (i - 1 + images.length) % images.length);
+  const nextImage = () => setActiveImageIndex((i) => (i + 1) % images.length);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.4 }}
+      className="flex flex-col gap-3"
+    >
+      <div
+        className="relative bg-white rounded-3xl overflow-hidden shadow-sm"
+        style={{ minHeight: "400px" }}
+      >
+        {activeImage ? (
+          <AnimatePresence>
+            <motion.img
+              key={activeImage.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              src={getFileUrl(activeImage.image_url)}
+              alt={product.name}
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ minHeight: "400px" }}
+            />
+          </AnimatePresence>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full" style={{ minHeight: "400px" }}>
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Package size={64} className="text-gray-300" />
+            </motion.div>
+            <p className="text-sm text-[#86868B] mt-3">Sin imagen disponible</p>
+          </div>
+        )}
+
+        {hasMultipleImages && (
+          <>
+            <button
+              onClick={prevImage}
+              aria-label="Foto anterior"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-[#1D1D1F] hover:bg-white transition-colors"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={nextImage}
+              aria-label="Foto siguiente"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-[#1D1D1F] hover:bg-white transition-colors"
+            >
+              <ChevronRight size={18} />
+            </button>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+              {images.map((img, i) => (
+                <button
+                  key={img.id}
+                  onClick={() => goToImage(i)}
+                  aria-label={"Ver foto " + (i + 1)}
+                  className={"h-1.5 rounded-full transition-all " + (i === activeImageIndex ? "w-5 bg-white" : "w-1.5 bg-white/60")}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {hasMultipleImages && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {images.map((img, i) => (
+            <button
+              key={img.id}
+              onClick={() => goToImage(i)}
+              className={"w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-colors " + (i === activeImageIndex ? "border-[#1D1D1F]" : "border-transparent hover:border-gray-200")}
+            >
+              <img src={getFileUrl(img.image_url)} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </motion.div>
   );
 }

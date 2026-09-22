@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Plus, Package, AlertTriangle, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import api from "@/lib/api";
+import api, { getFileUrl } from "@/lib/api";
 import PageTransition from "@/components/shared/PageTransition";
 
 interface Product {
@@ -14,6 +14,7 @@ interface Product {
   price: number;
   status: string;
   sku: string | null;
+  primary_image_url: string | null;
   inventory: { stock_quantity: number; is_low_stock: boolean; is_out_of_stock: boolean } | null;
 }
 
@@ -25,26 +26,22 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 export default function StoreProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [filtered, setFiltered] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     api.get("/store/products?size=50")
-      .then((res) => {
-        setProducts(res.data.data.content);
-        setFiltered(res.data.data.content);
-      })
+      .then((res) => setProducts(res.data.data.content))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    setFiltered(products.filter((p) =>
+    return products.filter((p) =>
       p.name.toLowerCase().includes(q) ||
       (p.sku || "").toLowerCase().includes(q)
-    ));
+    );
   }, [search, products]);
 
   const activeCount = products.filter((p) => p.status === "ACTIVE").length;
@@ -155,8 +152,16 @@ export default function StoreProductsPage() {
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-[#F5F5F7] group-hover:bg-white rounded-xl flex items-center justify-center transition-colors shrink-0 shadow-sm">
-                              <Package size={16} className="text-[#86868B]" />
+                            <div className="w-10 h-10 bg-[#F5F5F7] group-hover:bg-white rounded-xl flex items-center justify-center overflow-hidden transition-colors shrink-0 shadow-sm">
+                              {product.primary_image_url ? (
+                                <img
+                                  src={getFileUrl(product.primary_image_url)}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Package size={16} className="text-[#86868B]" />
+                              )}
                             </div>
                             <div>
                               <p className="text-sm font-semibold text-[#1D1D1F]">{product.name}</p>
