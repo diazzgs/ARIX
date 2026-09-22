@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Store, Mail, Phone, MapPin, Zap, Globe, Instagram, Facebook, FileText, Building2 } from "lucide-react";
+import { motion } from "framer-motion";
 import api from "@/lib/api";
+import Toast from "@/components/shared/Toast";
+import PageTransition from "@/components/shared/PageTransition";
 
 interface StoreData {
   id: number;
@@ -41,7 +45,7 @@ export default function StoreProfilePage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState("");
+  const [toast, setToast] = useState({ visible: false, message: "" });
 
   useEffect(() => {
     api.get("/store/me")
@@ -71,98 +75,237 @@ export default function StoreProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setSuccess("");
     try {
       await Promise.all([
         api.put("/store/me", form),
         api.put("/store/me/profile", profileForm),
       ]);
-      setSuccess("Tienda actualizada correctamente");
-    } catch (err) {
-      console.error(err);
+      setToast({ visible: true, message: "✓ Tienda actualizada correctamente" });
+    } catch {
+      setToast({ visible: true, message: "Error al guardar los cambios" });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <p className="text-[#86868B]">Cargando...</p>;
+  if (loading) return (
+    <div className="space-y-4">
+      {[...Array(3)].map((_, i) => (
+        <motion.div
+          key={i}
+          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+          className="bg-white rounded-2xl h-40 shadow-sm"
+        />
+      ))}
+    </div>
+  );
+
+  const inputClass = "w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black";
+  const labelClass = "block text-xs font-semibold text-[#86868B] uppercase tracking-wide mb-1.5";
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-[#1D1D1F] mb-8">Mi Tienda</h1>
+    <PageTransition>
+      <div>
+        <Toast message={toast.message} visible={toast.visible} onClose={() => setToast({ ...toast, visible: false })} />
 
-      {success && (
-        <p className="text-green-600 text-sm mb-4 bg-green-50 px-4 py-3 rounded-xl">{success}</p>
-      )}
-
-      <form onSubmit={handleSave} className="space-y-4">
-        <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-medium text-[#1D1D1F]">Información básica</h2>
-          {[
-            { label: "Nombre comercial", key: "business_name" },
-            { label: "Correo de contacto", key: "contact_email" },
-            { label: "Teléfono", key: "contact_phone" },
-            { label: "Dirección", key: "contact_address" },
-          ].map(({ label, key }) => (
-            <div key={key}>
-              <label className="block text-sm font-medium text-[#1D1D1F] mb-1">{label}</label>
-              <input
-                type="text"
-                value={form[key as keyof typeof form]}
-                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              />
-            </div>
-          ))}
-          <div>
-            <label className="block text-sm font-medium text-[#1D1D1F] mb-1">Descripción</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black resize-none"
-            />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-medium text-[#1D1D1F]">Perfil extendido</h2>
-          {[
-            { label: "Eslogan", key: "tagline" },
-            { label: "Facebook", key: "social_facebook" },
-            { label: "Instagram", key: "social_instagram" },
-            { label: "Sitio web", key: "social_website" },
-            { label: "RTN / ID Fiscal", key: "tax_id" },
-          ].map(({ label, key }) => (
-            <div key={key}>
-              <label className="block text-sm font-medium text-[#1D1D1F] mb-1">{label}</label>
-              <input
-                type="text"
-                value={profileForm[key as keyof typeof profileForm]}
-                onChange={(e) => setProfileForm({ ...profileForm, [key]: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              />
-            </div>
-          ))}
-          <div>
-            <label className="block text-sm font-medium text-[#1D1D1F] mb-1">Acerca de</label>
-            <textarea
-              value={profileForm.about}
-              onChange={(e) => setProfileForm({ ...profileForm, about: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black resize-none"
-            />
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full bg-[#1D1D1F] text-white py-3 rounded-xl text-sm font-medium hover:bg-black transition-colors disabled:opacity-50"
+        {/* Hero banner de la tienda */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#1D1D1F] rounded-3xl p-8 mb-6 text-white relative overflow-hidden"
         >
-          {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
-      </form>
-    </div>
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-4 right-8 w-32 h-32 bg-white rounded-full" />
+            <div className="absolute bottom-4 right-24 w-16 h-16 bg-white rounded-full" />
+            <div className="absolute top-8 right-40 w-8 h-8 bg-white rounded-full" />
+          </div>
+          <div className="relative flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                  <Store size={22} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">{store?.business_name}</h1>
+                  <p className="text-white/60 text-sm">/{store?.slug}</p>
+                </div>
+              </div>
+              {profileForm.tagline && (
+                <p className="text-white/80 text-sm mt-2 max-w-md">{profileForm.tagline}</p>
+              )}
+            </div>
+            <div className="text-right">
+              <span className={"px-3 py-1.5 rounded-full text-xs font-medium " + (store?.status === "ACTIVE" ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300")}>
+                {store?.status === "ACTIVE" ? "Tienda activa" : "Tienda suspendida"}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Columna izquierda */}
+          <div className="space-y-4">
+            {/* Info básica */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-2xl p-6 shadow-sm"
+            >
+              <div className="flex items-center gap-2 mb-5">
+                <Building2 size={16} className="text-[#86868B]" />
+                <h2 className="font-semibold text-[#1D1D1F]">Información básica</h2>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className={labelClass}>Nombre comercial</label>
+                  <div className="relative">
+                    <Store size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86868B]" />
+                    <input type="text" value={form.business_name}
+                      onChange={(e) => setForm({ ...form, business_name: e.target.value })}
+                      className={inputClass + " pl-10"} />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>Correo de contacto</label>
+                  <div className="relative">
+                    <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86868B]" />
+                    <input type="email" value={form.contact_email}
+                      onChange={(e) => setForm({ ...form, contact_email: e.target.value })}
+                      className={inputClass + " pl-10"} />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>Teléfono</label>
+                  <div className="relative">
+                    <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86868B]" />
+                    <input type="tel" value={form.contact_phone}
+                      onChange={(e) => setForm({ ...form, contact_phone: e.target.value })}
+                      className={inputClass + " pl-10"} />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>Dirección</label>
+                  <div className="relative">
+                    <MapPin size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86868B]" />
+                    <input type="text" value={form.contact_address}
+                      onChange={(e) => setForm({ ...form, contact_address: e.target.value })}
+                      className={inputClass + " pl-10"} />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>Descripción</label>
+                  <textarea value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    rows={3} className={inputClass + " resize-none"} />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Redes sociales */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-2xl p-6 shadow-sm"
+            >
+              <div className="flex items-center gap-2 mb-5">
+                <Globe size={16} className="text-[#86868B]" />
+                <h2 className="font-semibold text-[#1D1D1F]">Redes sociales</h2>
+              </div>
+              <div className="space-y-4">
+                {[
+                  { label: "Facebook", key: "social_facebook", icon: Facebook },
+                  { label: "Instagram", key: "social_instagram", icon: Instagram },
+                  { label: "Sitio web", key: "social_website", icon: Globe },
+                ].map(({ label, key, icon: Icon }) => (
+                  <div key={key}>
+                    <label className={labelClass}>{label}</label>
+                    <div className="relative">
+                      <Icon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86868B]" />
+                      <input
+                        type="text"
+                        value={profileForm[key as keyof typeof profileForm]}
+                        onChange={(e) => setProfileForm({ ...profileForm, [key]: e.target.value })}
+                        className={inputClass + " pl-10"}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Columna derecha */}
+          <div className="space-y-4">
+            {/* Perfil extendido */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="bg-white rounded-2xl p-6 shadow-sm"
+            >
+              <div className="flex items-center gap-2 mb-5">
+                <Zap size={16} className="text-[#86868B]" />
+                <h2 className="font-semibold text-[#1D1D1F]">Perfil de tienda</h2>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className={labelClass}>Eslogan</label>
+                  <input type="text" value={profileForm.tagline}
+                    onChange={(e) => setProfileForm({ ...profileForm, tagline: e.target.value })}
+                    placeholder="La mejor tecnología al alcance de tu mano"
+                    className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Acerca de la tienda</label>
+                  <textarea value={profileForm.about}
+                    onChange={(e) => setProfileForm({ ...profileForm, about: e.target.value })}
+                    rows={6} placeholder="Cuéntale a tus clientes sobre tu tienda..."
+                    className={inputClass + " resize-none"} />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Fiscal */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="bg-white rounded-2xl p-6 shadow-sm"
+            >
+              <div className="flex items-center gap-2 mb-5">
+                <FileText size={16} className="text-[#86868B]" />
+                <h2 className="font-semibold text-[#1D1D1F]">Información fiscal</h2>
+              </div>
+              <div>
+                <label className={labelClass}>RTN / ID Fiscal</label>
+                <input type="text" value={profileForm.tax_id}
+                  onChange={(e) => setProfileForm({ ...profileForm, tax_id: e.target.value })}
+                  placeholder="RTN-0000-0000-0000" className={inputClass + " font-mono"} />
+                <p className="text-xs text-[#86868B] mt-1.5">
+                  Este número se usará en la generación de facturas PDF.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Botón guardar */}
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              type="submit"
+              disabled={saving}
+              className="w-full bg-[#1D1D1F] text-white py-3.5 rounded-2xl text-sm font-medium hover:bg-black transition-colors disabled:opacity-50 shadow-sm"
+            >
+              {saving ? "Guardando..." : "Guardar todos los cambios"}
+            </motion.button>
+          </div>
+        </form>
+      </div>
+    </PageTransition>
   );
 }
