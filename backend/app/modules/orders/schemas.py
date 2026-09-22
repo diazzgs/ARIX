@@ -52,6 +52,7 @@ class OrderItemResponse(BaseModel):
     id: int
     product_id: int
     product_name: str
+    product_image_url: str | None = None
     unit_price: Decimal
     quantity: int
     line_total: Decimal

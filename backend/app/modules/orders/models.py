@@ -116,8 +116,14 @@ class OrderItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # --- Relaciones ---
+      # --- Relaciones ---
     store_order: Mapped["StoreOrder"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship()
+
+    @property
+    def product_image_url(self) -> str | None:
+        """URL de la imagen principal del producto (si el producto sigue existiendo)."""
+        return self.product.primary_image_url if self.product else None
 
     def __repr__(self) -> str:
         return f"<OrderItem id={self.id} product_id={self.product_id} qty={self.quantity}>"
